@@ -15,6 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+TITLE = "UTE 2DO SEMESTRE"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-p9r473$&+=m3wl+76y&$)e+20y4!vbe48=#)wj8!^3nb2kn=f8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost','127.0.0.1','172.16.0.16'] #Manejo de iframes
 
 
 # Application definition
@@ -55,7 +56,7 @@ ROOT_URLCONF = 'blb_django.urls'
 TEMPLATES = [      #Templates en html, usado exclusivamente para django usa maco
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR],
         'APP_DIRS': True,
         'OPTIONS': { #Librerias para manejar procesos de request y mensajes
             'context_processors': [

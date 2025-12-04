@@ -1,0 +1,11 @@
+{% extends "index.html" %} <!-- Aqui se llama index.html -->
+
+{% block contenido %}
+ <!-- Creo un lugar de posicion para mi plantilla de autor en este caso para que salga el contendio de index.html--> 
+<h2> AUTORES </h2>
+<ul> {% for autor in autores%}
+    <li> {{ autor.nombre }}{{ autor.apellido }} {{ autor.bibliografia }}
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}
