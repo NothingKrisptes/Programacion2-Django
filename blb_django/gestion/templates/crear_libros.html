@@ -1,0 +1,22 @@
+{% extends "index.html" %} 
+
+{% block contenido %}
+
+<h2> CREAR LIBRO </h2>
+<form method="POST">
+    {% csrf_token %} <!-- Crea una cokies de sesion, obligando a que se cree por una persona y no se automatice por un robot-->
+    <label for = "id_titulo" name="titulo"> Titulo: </label>
+    <input placeholder="dato" type="text" id="id_titulo" name="titulo" required> <br/> 
+
+    <label for = "id_autor" name="autor"> Autor: </label>
+    <select id ="id_autor" name="autor" required>
+        <option value="">-- Seleccione un autor --</option>
+        {% for autor in autores %}
+        <option value="{{autor.id}}">
+            {{ autor.nombre }}  {{ autor.apellido }}
+        </option>
+        {%endfor%}
+    </select>
+    <button type="submit">Guardar</button>
+</form>
+{% endblock %}

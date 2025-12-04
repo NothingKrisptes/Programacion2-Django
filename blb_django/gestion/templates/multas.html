@@ -1,0 +1,11 @@
+{% extends "index.html" %} <!-- Aqui se llama index.html -->
+
+{% block contenido %}
+ <!-- Creo un lugar de posicion para mi plantilla de autor en este caso para que salga el contendio de index.html--> 
+<h2> MULTAS </h2>
+<ul> {% for multa in multas%}
+    <li> {{ multa.prestamo }}{{ multa.tipo }} {{ multa.monto }} {{ multa.pagada }} {{ multa.fecha }}
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "index.html" %} 
+
+{% block contenido %}
+
+<h2> CREAR PRESTAMO </h2>
+<form method="POST">
+    {% csrf_token %} <!-- Crea una cokies de sesion, obligando a que se cree por una persona y no se automatice por un robot-->
+    <label for = "id_libro" name="libro"> Libro: </label>
+    <select id ="id_libro" name="libro" required>
+        <option value="">-- Seleccione un libro --</option>
+        {% for libro in libros %}
+        <option value="{{libro.id}}">
+            {{ libro.titulo }}  {{ libro.autor }}
+        </option>
+        {%endfor%}
+    </select>
+    <label for = "id_usuario" name="usuario"> Usuario: </label>
+    <input placeholder="dato" type="text" id="id_usuario" name="usuario" required> <br/> 
+
+    <label for = "id_fecha_prestamos" name="fecha_prestamos"> Fecha Prestamo: </label>
+    <input placeholder="dato" type="text" id="id_fecha_prestamos" name="fecha_prestamos" required> <br/> 
+
+    <label for = "id_fecha_max" name="fecha_max"> Fecha Maxima: </label>
+    <input placeholder="dato" type="text" id="id_fecha_max" name="fecha_max" required> <br/> 
+
+    <label for = "id_fecha_devolucion" name="fecha_devolucion"> Usuario: </label>
+    <input placeholder="dato" type="text" id="id_fecha_devolucion" name="fecha_devolucion" required> <br/> 
+
+    <button type="submit">Guardar</button>
+</form>
+{% endblock %}
