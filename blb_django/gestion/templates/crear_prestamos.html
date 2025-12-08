@@ -6,26 +6,23 @@
 <form method="POST">
     {% csrf_token %} <!-- Crea una cokies de sesion, obligando a que se cree por una persona y no se automatice por un robot-->
     <label for = "id_libro" name="libro"> Libro: </label>
-    <select id ="id_libro" name="libro" required>
-        <option value="">-- Seleccione un libro --</option>
+    <select type = "text" id="id_libro" name="libro" required><br/>
+        <option value ="">--Seleccionar Libro--</option>
         {% for libro in libros %}
-        <option value="{{libro.id}}">
-            {{ libro.titulo }}  {{ libro.autor }}
-        </option>
+        <option value = "{{libro.id}}">{{libro.titulo}}</option>
         {%endfor%}
-    </select>
-    <label for = "id_usuario" name="usuario"> Usuario: </label>
-    <input placeholder="dato" type="text" id="id_usuario" name="usuario" required> <br/> 
+    </select><br/>
 
+    <label for = "id_usuario" name="autor"> Usuario: </label>
+    <select type = "text" id="id_usuario" name="usuario" required><br/>
+        <option value ="">--Seleccionar Usuario</option>
+        {% for usuario in usuarios %}
+            <option value = "{{usuario.id}}">{{usuario.username}}</option>
+        {%endfor%}
+    </select><br/>
     <label for = "id_fecha_prestamos" name="fecha_prestamos"> Fecha Prestamo: </label>
-    <input placeholder="dato" type="text" id="id_fecha_prestamos" name="fecha_prestamos" required> <br/> 
+    <input type="date" id="id_fecha_prestamos" name="fecha_prestamos" value ="{{fecha}}" required> <br/> 
 
-    <label for = "id_fecha_max" name="fecha_max"> Fecha Maxima: </label>
-    <input placeholder="dato" type="text" id="id_fecha_max" name="fecha_max" required> <br/> 
-
-    <label for = "id_fecha_devolucion" name="fecha_devolucion"> Usuario: </label>
-    <input placeholder="dato" type="text" id="id_fecha_devolucion" name="fecha_devolucion" required> <br/> 
-
-    <button type="submit">Guardar</button>
+    <button type="submit">Crear</button>
 </form>
 {% endblock %}

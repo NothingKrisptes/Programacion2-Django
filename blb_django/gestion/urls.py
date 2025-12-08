@@ -11,10 +11,11 @@ urlpatterns = [
     #Autores
     path('autores/',lista_autores, name="lista_autores"),
     path('autores/nuevo/',crear_autor, name="crear_autores"),
+    path('autores/<int:id>/editar/',crear_autor, name="editar_autores"),
     
     #Prestamos
     path('prestamos/',lista_prestamos, name="lista_prestamo"),
-    path('prestamos/nuevo/',crear_prestamo, name="crear_prestamo"),
+    path('prestamos/n/',crear_prestamos, name="crear_prestamos"),
     path('prestamos/<int:id>', detalle_prestamo, name="detalle_prestamo"),
     
     #Multas

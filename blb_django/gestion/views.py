@@ -29,41 +29,92 @@ def crear_libro(request):
             return redirect(lista_libros)
     return render(request, 'gestion/templates/crear_libros.html', {'autores':autores})
 
+# def editar_autores(request, id):
+#     autor = get_object_or_404(Autor, id=id) #Tenemos que comparar con la variable que se va a editar
+#     if request.method == 'POST':
+#         nombre = request.POST.get('nombre')
+#         apellido = request.POST.get('apellido')
+#         bibliografia = request.POST.get('bibliografia')
+        
+#         if nombre and apellido:
+#             autor.apellido = apellido
+#             autor.nombre = nombre
+#             autor.bibliografia = bibliografia
+#             autor.save()
+#             return redirect('lista_autores')
+#     return render(request, 'gestion/templates/editar_autores.html',{'autor':autor})
+       
 def lista_autores(request):
     autores = Autor.objects.all() #Devuelve toda la lista 
     return render(request, 'gestion/templates/autores.html',{'autores':autores})
 
-def crear_autor(request):
+def crear_autor(request, id=None):
+    if id == None:
+        autor = None
+        modo = 'Crear'
+    else:
+        autor = get_object_or_404(Autor, id=id)
+        modo = 'Editar'
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         apellido = request.POST.get('apellido')
         bibliografia = request.POST.get('bibliografia')
-        Autor.objects.create(nombre=nombre, apellido=apellido, bibliografia=bibliografia)
+        if autor == None:
+            Autor.objects.create(nombre=nombre, apellido=apellido, bibliografia=bibliografia)
+        else:
+            autor.apellido = apellido
+            autor.nombre = nombre
+            autor.bibliografia = bibliografia
+            autor.save()
         return redirect(lista_autores)
-    return render(request, 'gestion/templates/crear_autores.html')
+    context = {'autor':autor,
+               'titulo':'Editar Autor'if modo == 'Editar' else 'Crear Autor',
+               'texto_boton': 'Guardar cambios' if modo == 'Editar' else 'Crear'}
+    return render(request, 'gestion/templates/crear_autores.html', context)
 
 def lista_prestamos(request):
     prestamos = Prestamo.objects.all() #Devuelve toda la lista 
     return render(request, 'gestion/templates/prestamos.html',{'prestamos':prestamos})
 
-def crear_prestamo(request):
-    libros = Libro.objects.all()
-    usuarios = User.objects.all()
+# def crear_prestamo(request):
+#     libros = Libro.objects.all()
+#     usuarios = User.objects.all()
     
-    if request.method == 'POST':
-        libro_id = request.POST.get('titulo')
-        usuario_id = request.POST.get('autor')
-        fecha_prestamos = request.POST.get('fecha_prestamos')
-        fecha_max = request.POST.get('fecha_max')
-        fecha_devolucion = request.POST.get('fecha_devolucion')
+#     if request.method == 'POST':
+#         libro_id = request.POST.get('titulo')
+#         usuario_id = request.POST.get('autor')
+#         fecha_prestamos = request.POST.get('fecha_prestamos')
+#         fecha_max = request.POST.get('fecha_max')
+#         fecha_devolucion = request.POST.get('fecha_devolucion')
         
-        if libro_id and usuario_id:
-            libro = get_object_or_404(Libro, id = libro_id)
-            usuario = get_object_or_404(User, id = usuario_id)
-            Prestamo.objects.create(libro=libro, usuario=usuario, fecha_prestamos = fecha_prestamos, 
-                                    fecha_max = fecha_max, fecha_devolucion = fecha_devolucion)
-            return redirect(lista_prestamos)
-    return render(request, 'gestion/templates/crear_prestamos.html', {'libros':libros}, {'usuarios': usuarios})
+#         if libro_id and usuario_id:
+#             libro = get_object_or_404(Libro, id = libro_id)
+#             usuario = get_object_or_404(User, id = usuario_id)
+#             Prestamo.objects.create(libro=libro, usuario=usuario, fecha_prestamos = fecha_prestamos, 
+#                                     fecha_max = fecha_max, fecha_devolucion = fecha_devolucion)
+#             return redirect(lista_prestamos)
+#     return render(request, 'gestion/templates/crear_prestamos.html', {'libros':libros}, {'usuarios': usuarios})
+
+def crear_prestamos(request):
+    libro = Libro.objects.filter(disponible=True)
+    usuario = User.objects.all()
+    if request.method == 'POST':
+        libro_id = request.method.POST.get('libro')
+        usuario_id = request.method.POST.get('usuario')
+        fecha_prestamos = request.POST.get('fecha_prestamos')
+        if libro_id and usuario_id and fecha_prestamos:
+            libro = get_object_or_404(Libro, id=libro_id)
+            usuario = get_object_or_404(User, id=usuario_id)
+            prestamo = Prestamo.objects.create(libro = libro,
+                                               usuario = usuario,
+                                               fecha_prestamos = fecha_prestamos)
+            libro.disponible = False
+            libro.save()
+            return redirect('detalle_prestamo', id = prestamo.id)
+    fecha = (timezone.now().date()).isoformat() #YYYY-MM-DD
+    return render(request,'gestion/templates/crear_prestamos.html', {'libros':libro, 
+                                                                    'usuario':usuario,
+                                                                    'fecha': fecha})
 
 def detalle_prestamo(request):
     pass

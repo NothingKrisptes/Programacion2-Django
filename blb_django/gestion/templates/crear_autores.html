@@ -1,19 +1,22 @@
 {% extends "index.html" %} 
 
 {% block contenido %}
-
-<h2> CREAR AUTOR </h2>
+<br/>
+<h2> {{titulo}} </h2>
+<br/>
 <form method="POST">
+    
     {% csrf_token %} <!-- Crea una cokies de sesion, obligando a que se cree por una persona y no se automatice por un robot-->
     <label for = "id_nombre" name="nombre"> Nombre: </label>
-    <input placeholder="dato" type="text" id="id_nombre" name="nombre" required> <br/> 
+    <input type="text" id="id_nombre" name="nombre" value ="{{autor.nombre | default_if_none:""}}" required> <br/> 
 
     <label for = "id_apellido" name="apellido"> Apellido: </label>
-    <input type="text" id="id_apellido" name="apellido" required> <br/> 
+    <input type="text" id="id_apellido" name="apellido" value ="{{autor.apellido | default_if_none:""}}" required> <br/> 
 
     <label for = "id_bibliografia" name="bibliografia"> Nombre: </label>
-    <input type="text" id="id_bibliografia" name="bibliografia" required> <br/> 
-
-    <button type="submit">Guardar</button>
+    <input type="text" id="id_bibliografia" name="bibliografia" value ="{{autor.bibliografia | default_if_none:""}}" required> <br/> 
+<br/>
+    <button type="submit">{{ texto_boton }}</button>
+    <br/>
 </form>
 {% endblock %}
