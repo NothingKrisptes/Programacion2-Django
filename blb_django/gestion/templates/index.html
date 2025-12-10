@@ -59,6 +59,17 @@
                 <li class="nav-item"><a class="nav-link" href="{%url 'lista_libros' %}"><i class="fa-solid fa-book"></i> Libros</a></li>
                 <li class="nav-item"><a class="nav-link" href="{%url 'lista_prestamo' %}"><i class="bi bi-arrow-left-right"></i> Préstamos</a></li>
                 <li class="nav-item"><a class="nav-link" href="{%url 'lista_multa' %}"><i class="bi bi-cash-stack"></i> Multas</a></li>
+                {%if not user.is_authenticated%}
+                <li class="nav-item"><a class="nav-link" href="{%url 'login' %}"><i class="bi bi-cash-stack"></i> Login </a></li>
+                {%endif%}
+                {%if user.is_authenticated%}
+                    <form method="post" action="{%url 'logout'%}">
+                        {%csrf_token%}
+                        <li class="nav-item">
+                            <button type="submit">Cerrar sesion</button>
+                        </li>
+                    </form>
+                {%endif%}
             </ul>
         </div>
     </div>

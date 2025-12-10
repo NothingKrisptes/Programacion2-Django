@@ -1,0 +1,13 @@
+{% extends "index.html"%}
+
+{%block contenido%}
+
+<h2> Registro de usuario </h2>
+<form method='POST'>
+{{form.non_field_errors}}
+    {%csrf_token%}
+    {{form.as_p}} <!-- Modificando el div o p cambio el tipo de vista -->
+    <button type="submit" > Crear </button>
+</form>
+
+{%endblock%}

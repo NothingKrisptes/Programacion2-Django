@@ -13,7 +13,7 @@
     <label for = "id_apellido" name="apellido"> Apellido: </label>
     <input type="text" id="id_apellido" name="apellido" value ="{{autor.apellido | default_if_none:""}}" required> <br/> 
 
-    <label for = "id_bibliografia" name="bibliografia"> Nombre: </label>
+    <label for = "id_bibliografia" name="bibliografia"> Bibliografia: </label>
     <input type="text" id="id_bibliografia" name="bibliografia" value ="{{autor.bibliografia | default_if_none:""}}" required> <br/> 
 <br/>
     <button type="submit">{{ texto_boton }}</button>
