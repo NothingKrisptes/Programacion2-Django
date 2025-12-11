@@ -31,6 +31,7 @@ class Prestamo(models.Model):
         permissions = (
             ("Ver_prestamos", "Puede ver prestamos"),
             ("gestionar_prestamos","Puede gestionar prestamos"),
+            ("gestionar_libros","Puede gestionar libros"),
         )
     
     def __str__(self):

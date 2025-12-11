@@ -16,12 +16,12 @@
     <label for = "id_usuario" name="autor"> Usuario: </label>
     <select type = "text" id="id_usuario" name="usuario" required><br/>
         <option value ="">--Seleccionar Usuario</option>
-        {% for usuario in usuarios %}
+        {% for usuario in usuario %}
             <option value = "{{usuario.id}}">{{usuario.username}}</option>
         {%endfor%}
     </select><br/>
     <label for = "id_fecha_prestamos" name="fecha_prestamos"> Fecha Prestamo: </label>
-    <input type="date" id="id_fecha_prestamos" name="fecha_prestamos" value ="{{fecha}}" required> <br/> 
+    <input type="date" id="id_fecha_prestamo" name="fecha_prestamo" value ="{{fecha}}" required> <br/> 
 
     <button type="submit">Crear</button>
 </form>

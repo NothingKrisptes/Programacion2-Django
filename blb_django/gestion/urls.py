@@ -5,6 +5,7 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     path("",index, name = "index"),
     
+    path("error/", error, name = "error"),
     #Gestion Usuarios
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('loguot/', auth_views.LogoutView.as_view(next_page='login'),name = "logout"), #Este caso toma el valor de la pagina de login/, el name define el nombre que se usa en next_page
@@ -27,7 +28,7 @@ urlpatterns = [
     
     #Prestamos
     path('prestamos/',lista_prestamos, name="lista_prestamo"),
-    path('prestamos/n/',crear_prestamos, name="crear_prestamos"),
+    path('prestamos/nuevo/',crear_prestamos, name="crear_prestamos"),
     path('prestamos/<int:id>', detalle_prestamo, name="detalle_prestamo"),
     
     #Multas

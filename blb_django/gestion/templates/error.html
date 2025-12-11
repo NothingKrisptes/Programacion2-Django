@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error: Permiso No Concedido</title>
+    <style>
+        /* Estilos CSS (puedes moverlos a un archivo .css separado) */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .error-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            border-left: 5px solid #cc0000; /* Borde rojo de error */
+        }
+
+        .error-icon {
+            font-size: 60px;
+            color: #cc0000;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            color: #cc0000;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .home-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">🔒</div>
+        <h1>Permiso No Concedido</h1>
+        <p>
+            Lo sentimos, pero parece que **no tienes la autorización necesaria** para acceder a esta página o recurso.
+        </p>
+        <p>
+            Verifica que tu cuenta tenga los permisos otorgados o contacta al administrador del sistema si crees que se trata de un error.
+        </p>
+        <a href="/" class="home-button">Ir a la Página de Inicio</a>
+    </div>
+</body>
+</html>

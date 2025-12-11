@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
-
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Permission
 from django.conf import settings
 from .models import Autor,Libro,Prestamo,Multa
 
@@ -107,18 +108,18 @@ def crear_prestamos(request):
     libro = Libro.objects.filter(disponible=True)
     usuario = User.objects.all()
     if request.method == 'POST':
-        libro_id = request.method.POST.get('libro')
-        usuario_id = request.method.POST.get('usuario')
+        libro_id = request.POST.get('libro')
+        usuario_id = request.POST.get('usuario')
         fecha_prestamos = request.POST.get('fecha_prestamos')
         if libro_id and usuario_id and fecha_prestamos:
             libro = get_object_or_404(Libro, id=libro_id)
             usuario = get_object_or_404(User, id=usuario_id)
             prestamo = Prestamo.objects.create(libro = libro,
                                                usuario = usuario,
-                                               fecha_prestamos = fecha_prestamos)
+                                               fecha_prestamos = fecha_prestamos,)
             libro.disponible = False
             libro.save()
-            return redirect('detalle_prestamo', id = prestamo.id)
+            return redirect('detalle_prestamo', id = prestamo)
     fecha = (timezone.now().date()).isoformat() #YYYY-MM-DD
     return render(request,'gestion/templates/crear_prestamos.html', {'libros':libro, 
                                                                     'usuario':usuario,
@@ -143,15 +144,22 @@ def crear_multa(request):
             return redirect(lista_libros)
     return render(request, 'gestion/templates/crear_libros.html', {'autores':autores})
 
+
 def registro(request):
-    print('#########################')
-    print(request.method)
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             usuario = form.save()
+            try:
+                permiso = Permission.objects.get(codename='gestionar_prestamos')
+                usuario.user_permissions.add(permiso)
+            except Permission.DoesNotExist:
+                return redirect('error')
             login(request, usuario)
-            return redirect ('index')
+            return redirect('index')
     else:
-        form = UserCreationForm()
-    return render(request,'gestion/templates/registration/registro.html', {'form':form})
+        form = UserCreationForm()   
+    return render(request, 'gestion/templates/registration/registro.html', {'form': form})
+
+def error(request):
+    return render(request, 'gestion/templates/error.html',{'error':error})
