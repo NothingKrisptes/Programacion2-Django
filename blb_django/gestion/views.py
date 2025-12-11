@@ -9,6 +9,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 from django.conf import settings
 from .models import Autor,Libro,Prestamo,Multa
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.urls import reverse_lazy
 
 # Create your views here.
 
@@ -144,7 +147,6 @@ def crear_multa(request):
             return redirect(lista_libros)
     return render(request, 'gestion/templates/crear_libros.html', {'autores':autores})
 
-
 def registro(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
@@ -163,3 +165,41 @@ def registro(request):
 
 def error(request):
     return render(request, 'gestion/templates/error.html',{'error':error})
+
+# TIPO DE VISTAS VERSION DJGANGO
+# Se necesitan las siguientes librerias
+# from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+# from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+# from django.urls import reverse_lazy
+
+class LibroListView(LoginRequiredMixin, ListView):
+    model = Libro
+    template_name = 'gestion/templates/libros_view.html'
+    context_object_name = 'libros'
+    paginate_by = 1 # Lista primaria de 10 objetos que se puede ir recorriendo "pestañas de paginas"
+    
+class LibroDetalleView(LoginRequiredMixin, DetailView):
+    model = Libro
+    template_name = 'gestion/templates/detalle_libros.html'
+    context_object_name = 'libro'
+    
+class LibroCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = Libro
+    fields = ['titulo', 'autor', 'disponible']
+    template_name = 'gestion/templates/crear_libros.html'
+    success_url = reverse_lazy('libro_list') #Direcciona a la url que eligamos
+    permission_required = 'gestion.add_libro'
+
+class LibroUpdateView(LoginRequiredMixin,PermissionRequiredMixin, UpdateView):
+    model = Libro
+    fields = ['titulo', 'autor']
+    template_name = 'gestion/templates/editar_libros.html'
+    success_url = reverse_lazy('libro_list')
+    permission_required = 'gestion.change_libro'
+    
+class LibroDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    model = Libro
+    template_name = 'gestion/templates/eliminar_libros.html' # Ventana de confirmacion para eliminar
+    success_url = reverse_lazy('libro_list')
+    permission_required = 'gestion.delete_libro'
+    

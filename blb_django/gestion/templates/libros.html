@@ -1,6 +1,7 @@
 {% extends "index.html" %} <!-- Aqui se llama index.html -->
 
 {% block contenido %}
+{{ page_obj}} <!-- Variable propia de django para crear paginaciones -->
  <!-- Creo un lugar de posicion para mi plantilla de autor en este caso para que salga el contendio de index.html--> 
 <h2> LIBROS </h2>
 <ul> {% for libro in libros%}
