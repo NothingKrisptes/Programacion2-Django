@@ -16,8 +16,8 @@
     {% endif %}
     <span> {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} </span> <!-- Me muestra en que pagina estoy de las existentes-->
     {% if page_obj.has_next %}
-    <a href = "?page={{ page_obj.next_page_number }}"> Siguiente </a>
-    <a href = "?page= {{page_obj.paginator.num_pages}}"> Última </a>
+    <a href = "?page = {{ page_obj.next_page_number }}"> Siguiente </a>
+    <a href = "?page = {{page_obj.paginator.num_pages}}"> Última </a>
     {% endif %}
 </div>
 {% endif %}

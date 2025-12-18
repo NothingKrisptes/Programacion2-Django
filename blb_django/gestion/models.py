@@ -18,7 +18,7 @@ class Libro(models.Model):
     disponible = models.BooleanField(default=True)
     
     def __str__(self):
-        return f"{self.titulo}"  #En este apartado que es visual no hay que hacer makemigrations
+        return f"{self.titulo} {self.autor}"  #En este apartado que es visual no hay que hacer makemigrations
     
 class Prestamo(models.Model):
     libro = models.ForeignKey(Libro,related_name="Prestamos",on_delete=models.PROTECT)
@@ -42,7 +42,9 @@ class Prestamo(models.Model):
         hoy = timezone.now().date() #timezone zona horario, date solo la fecha
         fecha_ref = self.fecha_devolucion or hoy
         if fecha_ref > self.fecha_max:
-            return (fecha_ref - self.fecha_devolucion).days
+            return (fecha_ref - self.fecha_max).days
+        else:
+            return 0
         
     @property
     def multa_retraso(self):
