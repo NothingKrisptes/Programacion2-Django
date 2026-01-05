@@ -1,0 +1,16 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4" style="max-width: 720px;">
+  <h2 class="mb-3">Eliminar libro</h2>
+
+  <div class="alert alert-warning">
+    ¿Seguro que deseas eliminar el libro: <b>{{ object.titulo }}</b>?
+  </div>
+
+  <form method="post" class="d-flex gap-2">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Sí, eliminar</button>
+    <a class="btn btn-outline-secondary" href="{% url 'lista_libros' %}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

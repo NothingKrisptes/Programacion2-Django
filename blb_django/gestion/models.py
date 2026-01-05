@@ -15,7 +15,7 @@ class Autor(models.Model):
 class Libro(models.Model):
     titulo = models.CharField(max_length=50)
     autor = models.ForeignKey(Autor,related_name="Libros", on_delete=models.PROTECT)    #Aqui en vez de one2many, las relaciones se hacen con llaves
-    isbn = models.CharField(max_length=20, blank=True, null=True)
+    isbn = models.CharField(max_length=20, blank=True, null=True,unique=True)
     paginas = models.IntegerField(blank=True, null=True)
     genero = models.CharField(max_length=100, blank=True, null=True)
     descripcion = models.TextField(blank=True, null=True)
@@ -23,7 +23,8 @@ class Libro(models.Model):
     coverId = models.IntegerField(blank=True, null=True)
     stock = models.PositiveIntegerField(default=1)
     disponible = models.BooleanField(default=True)
-    
+    activo = models.BooleanField(default=True)
+
     def __str__(self):
         return f"{self.titulo} {self.autor}"  #En este apartado que es visual no hay que hacer makemigrations
     

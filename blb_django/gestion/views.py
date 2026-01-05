@@ -18,6 +18,7 @@ from django.views.decorators.http import require_http_methods
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from django.db.models import F
+from django.views.decorators.http import require_POST
 
 # Create your views here.
 
@@ -88,6 +89,7 @@ def guardarLibroOpenLibrary(request):
     if request.method != "POST":
         return redirect("buscar_libro_openlibrary")
 
+    # Datos del FORM 2 (preview -> hidden inputs)
     titulo = (request.POST.get("titulo") or "").strip()
     autor_nombre = (request.POST.get("autorNombre") or "").strip()
     editorial = (request.POST.get("editorialNombre") or "").strip()
@@ -102,7 +104,7 @@ def guardarLibroOpenLibrary(request):
         messages.error(request, "Falta el título.")
         return redirect("buscar_libro_openlibrary")
 
-    # stock seguro
+    # Parseos seguros
     try:
         stock = int(stock_raw)
         if stock < 0:
@@ -110,19 +112,17 @@ def guardarLibroOpenLibrary(request):
     except ValueError:
         stock = 1
 
-    # páginas seguras
     try:
         paginas = int(paginas_raw) if paginas_raw else None
     except ValueError:
         paginas = None
 
-    # coverId seguro
     try:
         coverId = int(coverId_raw) if coverId_raw else None
     except ValueError:
         coverId = None
 
-    # crear / obtener autor local desde el string
+    # Autor local (crear/buscar por nombre)
     if autor_nombre:
         partes = autor_nombre.split()
         nombre = partes[0] if partes else "Desconocido"
@@ -132,25 +132,72 @@ def guardarLibroOpenLibrary(request):
 
     autor, _ = Autor.objects.get_or_create(nombre=nombre, apellido=apellido)
 
-    Libro.objects.create(
-        titulo=titulo,
-        autor=autor,
-        isbn=isbn or None,
-        paginas=paginas,
-        genero=genero or None,
-        descripcion=descripcion or None,
-        editorial=editorial or None,
-        coverId=coverId,
-        stock=stock,
-        # disponible lo calcula tu save() por stock
-    )
+    # --- Regla: si ya existe, sumar stock ---
+    libro = None
+    created = False
 
-    messages.success(request, "Libro guardado correctamente.")
+    # 1) Si hay ISBN, usarlo como “llave”
+    if isbn:
+        libro, created = Libro.objects.get_or_create(
+            isbn=isbn,
+            defaults={
+                "titulo": titulo,
+                "autor": autor,
+                "paginas": paginas,
+                "genero": genero or None,
+                "descripcion": descripcion or None,
+                "editorial": editorial or None,
+                "coverId": coverId,
+                "stock": stock,
+                "activo": True,  # si ya agregaste soft-delete
+            }
+        )
+        if not created:
+            Libro.objects.filter(pk=libro.pk).update(stock=F("stock") + stock, activo=True)
+            libro.refresh_from_db()
+            libro.save()  # recalcula disponible
+
+    # 2) Si no hay ISBN, usar titulo+autor
+    else:
+        libro, created = Libro.objects.get_or_create(
+            titulo=titulo,
+            autor=autor,
+            defaults={
+                "paginas": paginas,
+                "genero": genero or None,
+                "descripcion": descripcion or None,
+                "editorial": editorial or None,
+                "coverId": coverId,
+                "stock": stock,
+                "activo": True,  # si ya agregaste soft-delete
+            }
+        )
+        if not created:
+            Libro.objects.filter(pk=libro.pk).update(stock=F("stock") + stock, activo=True)
+            libro.refresh_from_db()
+            libro.save()  # recalcula disponible
+
+    if created:
+        messages.success(request, "Libro guardado correctamente.")
+    else:
+        messages.success(request, f"Ya existía el libro; se sumó el stock (+{stock}).")
+
     return redirect("lista_libros")
 
 def lista_autores(request):
     autores = Autor.objects.all() #Devuelve toda la lista 
     return render(request, 'gestion/templates/autores.html',{'autores':autores})
+
+@login_required
+@require_POST
+def reactivar_libro(request, pk):
+    libro = get_object_or_404(Libro, pk=pk)
+    libro.activo = True
+    if libro.stock is None:
+        libro.stock = 1
+    libro.save()  # recalcula disponible con tu save()
+    messages.success(request, "Libro reactivado correctamente.")
+    return redirect("lista_libros")
 
 @login_required
 def crear_autor(request, id=None):
@@ -388,7 +435,10 @@ class LibroListView(LoginRequiredMixin, ListView):
     model = Libro
     template_name = 'gestion/templates/libros_view.html'
     context_object_name = 'libros'
-    paginate_by = 8 # Lista primaria de 10 objetos que se puede ir recorriendo "pestañas de paginas"
+    paginate_by = 6 # Lista primaria de 10 objetos que se puede ir recorriendo "pestañas de paginas"
+    
+    def get_queryset(self):
+        return Libro.objects.filter(activo=True).order_by('-id')
     
 class LibroDetalleView(LoginRequiredMixin, DetailView):
     model = Libro
@@ -412,6 +462,21 @@ class LibroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
 class LibroDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Libro
     template_name = 'gestion/templates/eliminar_libros.html' # Ventana de confirmacion para eliminar
-    success_url = reverse_lazy('libro_list')
+    success_url = reverse_lazy('lista_libros')
     permission_required = 'gestion.delete_libro'
+
+    def post(self, request, *args, **kwargs):
+        libro = self.get_object()
+        libro.activo = False
+        libro.save()
+        messages.success(request, "Libro inactivado (se conserva el histórico de préstamos).")
+        return redirect(self.success_url)
     
+class LibroInactivoListView(LoginRequiredMixin, ListView):
+    model = Libro
+    template_name = "gestion/templates/libros_inactivos.html"
+    context_object_name = "libros"
+    paginate_by = 12
+
+    def get_queryset(self):
+        return Libro.objects.filter(activo=False).order_by("-id")

@@ -26,6 +26,10 @@ urlpatterns = [
     path('libros/nuevo/', LibroCreateView.as_view(), name="crear_libro"),
     path('libros/openlibrary/', buscarLibroOpenLibrary, name="buscar_libro_openlibrary"),
     path('libros/openlibrary/guardar/', guardarLibroOpenLibrary, name="guardar_libro_openlibrary"),
+    path('libros/<int:pk>/editar/', LibroUpdateView.as_view(), name='editar_libro'),
+    path('libros/<int:pk>/eliminar/', LibroDeleteView.as_view(), name='eliminar_libro'),
+    path('libros/<int:pk>/reactivar/', reactivar_libro, name='reactivar_libro'),
+    path('libros/inactivos/', LibroInactivoListView.as_view(), name='libros_inactivos'),
     
     #Autores
     path('autores/',lista_autores, name="lista_autores"),

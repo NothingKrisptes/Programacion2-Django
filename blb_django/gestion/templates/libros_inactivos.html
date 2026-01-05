@@ -4,38 +4,30 @@
 <div class="container py-4">
   <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div>
-      <h2 class="m-0">Libros</h2>
-      <small class="text-muted">Listado de libros con stock</small>
+      <h2 class="m-0">Libros inactivos</h2>
+      <small class="text-muted">Histórico (no aparecen en el listado principal)</small>
     </div>
 
     <div class="d-flex gap-2">
-      <a class="btn btn-outline-primary" href="{% url 'buscar_libro_openlibrary' %}">
-        Buscar en OpenLibrary
-      </a>
-      <a class="btn btn-primary" href="{% url 'crear_libro' %}">
-        Crear libro (manual)
-      </a>
-       <a class="btn btn-outline-warning" href="{% url 'libros_inactivos' %}">
-        Libros inactivos
-      </a>
+      <a class="btn btn-outline-secondary" href="{% url 'lista_libros' %}">Volver a activos</a>
     </div>
   </div>
 
   <div class="row g-3">
     {% for libro in libros %}
     <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-      <div class="card h-100 shadow-sm">
+      <div class="card h-100 shadow-sm border-warning">
 
         {% if libro.coverId %}
           <img
             src="https://covers.openlibrary.org/b/id/{{ libro.coverId }}-L.jpg"
             class="card-img-top"
             alt="Portada"
-            style="height: 320px; object-fit: cover;"
+            style="height: 280px; object-fit: cover;"
           >
         {% else %}
           <div class="d-flex align-items-center justify-content-center bg-light"
-               style="height: 320px;">
+               style="height: 280px;">
             <span class="text-muted">Sin portada</span>
           </div>
         {% endif %}
@@ -46,38 +38,28 @@
 
           <div class="small">
             <div><b>Stock:</b> {{ libro.stock }}</div>
-            <div><b>Editorial:</b> {{ libro.editorial|default:"No disponible" }}</div>
-            <div><b>Páginas:</b> {{ libro.paginas|default:"—" }}</div>
-            <div><b>Género:</b> {{ libro.genero|default:"Desconocido" }}</div>
             <div><b>ISBN:</b> {{ libro.isbn|default:"—" }}</div>
-            <div class="mt-2">{{ libro.descripcion|default:"No hay descripción disponible." }}</div>
+            <div><b>Editorial:</b> {{ libro.editorial|default:"No disponible" }}</div>
+          </div>
+
+          <div class="mt-2">
+            <span class="badge bg-warning text-dark">Inactivo</span>
           </div>
         </div>
 
-        <div class="card-footer bg-white d-flex justify-content-between align-items-center gap-2">
-          <div>
-            {% if libro.stock|default:0|add:0 > 0 %}
-              <span class="badge bg-success">Disponible</span>
-            {% else %}
-              <span class="badge bg-secondary">Sin stock</span>
-            {% endif %}
-          </div>
-
-          <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_libro' libro.pk %}">
-              Editar
-            </a>
-            <a class="btn btn-sm btn-outline-danger" href="{% url 'eliminar_libro' libro.pk %}">
-              Eliminar
-            </a>
-          </div>
+        <div class="card-footer bg-white">
+          <form method="post" action="{% url 'reactivar_libro' libro.pk %}"
+                onsubmit="return confirm('¿Reactivar este libro?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-success w-100" type="submit">Reactivar</button>
+          </form>
         </div>
 
       </div>
     </div>
     {% empty %}
       <div class="col-12">
-        <div class="alert alert-info">No hay libros registrados.</div>
+        <div class="alert alert-info">No hay libros inactivos.</div>
       </div>
     {% endfor %}
   </div>

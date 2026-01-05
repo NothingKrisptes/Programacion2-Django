@@ -3,7 +3,10 @@
 <div class="container py-4" style="max-width: 820px;">
   <div class="mb-3">
     <h2 class="m-0">Crear multa</h2>
-    <div class="text-muted">Deterioro: 5 o 10. Pérdida: 20. Retraso se suma solo si hubo retraso.</div>
+    <div class="text-muted">
+      Deterioro: 5 o 10. Pérdida: 20. Retraso se suma solo si hubo retraso.
+      (Los préstamos con libro inactivo se muestran como historial pero no se pueden seleccionar.)
+    </div>
   </div>
 
   <form method="post" class="card shadow-sm p-3">
@@ -13,7 +16,8 @@
       <label class="form-label">Préstamo</label>
       <select name="prestamo" class="form-select" required>
         {% for p in prestamos %}
-          <option value="{{ p.id }}">
+          <option value="{{ p.id }}" {% if p.libro.activo is False %}disabled{% endif %}>
+            {% if p.libro.activo is False %}[INACTIVO] {% endif %}
             #{{ p.id }} | {{ p.usuario.username }} | {{ p.libro }}
             | máx: {{ p.fecha_max }}
             | retraso: {{ p.dias_retraso }} días
@@ -23,6 +27,9 @@
           <option disabled>No hay préstamos disponibles</option>
         {% endfor %}
       </select>
+      <div class="form-text">
+        Si un préstamo aparece como INACTIVO, significa que el libro fue dado de baja (soft delete).
+      </div>
     </div>
 
     <div class="mb-3">
