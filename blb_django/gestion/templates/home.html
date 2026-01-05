@@ -1,84 +1,98 @@
 {% extends "index.html" %}
-
 {% block contenido %}
 
-<!-- CONTENIDO PRINCIPAL -->
-<body>
-<div class="container my-5">
+<div class="py-5 text-white" style="background: linear-gradient(90deg, #1f6feb 0%, #11b4c3 100%);">
+  <div class="container py-4">
+    <h1 class="fw-bold mb-2"><i class="bi bi-journal-bookmark"></i> Sistema de Gestión de Bibliotecas</h1>
+    <p class="lead mb-0">Administra autores, libros, préstamos y multas de forma rápida y elegante.</p>
+  </div>
+</div>
 
-    <div class="row g-4">
+<div class="container py-4">
 
-        <!-- AUTORES -->
-        <div class="col-md-3">
-            <div class="card menu-card shadow-sm text-center p-3" onclick="location.href='#autores'">
-                <i class="bi bi-pen fs-1 text-primary"></i>
-                <h4 class="mt-3">Autores</h4>
-                <p>Gestión completa de autores registrados.</p>
-            </div>
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-3">
+      <a class="text-decoration-none text-dark" href="{% url 'lista_autores' %}">
+        <div class="card menu-card h-100">
+          <div class="card-body text-center">
+            <h5 class="mb-2">Autores</h5>
+            <p class="text-muted mb-0">Gestión completa de autores registrados.</p>
+          </div>
         </div>
-
-        <!-- LIBROS -->
-        <div class="col-md-3">
-            <div class="card menu-card shadow-sm text-center p-3" onclick="location.href='#libros'">
-                <i class="bi bi-book fs-1 text-success"></i>
-                <h4 class="mt-3">Libros</h4>
-                <p>Control de inventario y catálogo de libros.</p>
-            </div>
-        </div>
-
-        <!-- PRÉSTAMOS -->
-        <div class="col-md-3">
-            <div class="card menu-card shadow-sm text-center p-3" onclick="location.href='#prestamos'">
-                <i class="bi bi-arrow-left-right fs-1 text-warning"></i>
-                <h4 class="mt-3">Préstamos</h4>
-                <p>Registro y devolución de préstamos.</p>
-            </div>
-        </div>
-
-        <!-- MULTAS -->
-        <div class="col-md-3">
-            <div class="card menu-card shadow-sm text-center p-3" onclick="location.href='#multas'">
-                <i class="bi bi-cash-stack fs-1 text-danger"></i>
-                <h4 class="mt-3">Multas</h4>
-                <p>Administración de multas por atrasos.</p>
-            </div>
-        </div>
-
+      </a>
     </div>
 
+    <div class="col-12 col-md-3">
+      <a class="text-decoration-none text-dark" href="{% url 'lista_libros' %}">
+        <div class="card menu-card h-100">
+          <div class="card-body text-center">
+            <h5 class="mb-2">Libros</h5>
+            <p class="text-muted mb-0">Control de inventario y catálogo.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-12 col-md-3">
+      <a class="text-decoration-none text-dark" href="{% url 'lista_prestamos' %}">
+        <div class="card menu-card h-100">
+          <div class="card-body text-center">
+            <h5 class="mb-2">Préstamos</h5>
+            <p class="text-muted mb-0">Registro y devolución de préstamos.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-12 col-md-3">
+      <a class="text-decoration-none text-dark" href="{% url 'lista_multa' %}">
+        <div class="card menu-card h-100">
+          <div class="card-body text-center">
+            <h5 class="mb-2">Multas</h5>
+            <p class="text-muted mb-0">Multas por atrasos o daños.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12">
+      <h3 class="mb-2 text-primary"><i class="bi bi-pencil"></i> Autores</h3>
+      <p class="text-muted">Desde aquí puedes administrar toda la información de los autores.</p>
+      <div class="d-flex gap-2">
+        <a class="btn btn-primary" href="{% url 'crear_autores' %}"><i class="bi bi-plus-circle"></i> Agregar Autor</a>
+        <a class="btn btn-outline-primary" href="{% url 'lista_autores' %}"><i class="bi bi-list"></i> Ver Autores</a>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <h3 class="mb-2 text-success"><i class="bi bi-book"></i> Libros</h3>
+      <p class="text-muted">Gestiona el catálogo de libros disponibles en la biblioteca.</p>
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-success" href="{% url 'crear_libro' %}"><i class="bi bi-plus-circle"></i> Agregar Libro</a>
+        <a class="btn btn-outline-success" href="{% url 'lista_libros' %}"><i class="bi bi-list"></i> Ver Libros</a>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <h3 class="mb-2 text-warning"><i class="bi bi-arrow-left-right"></i> Préstamos</h3>
+      <p class="text-muted">Registra, controla y devuelve los préstamos realizados.</p>
+      <div class="d-flex gap-2">
+        <a class="btn btn-warning" href="{% url 'crear_prestamos' %}"><i class="bi bi-plus-circle"></i> Nuevo Préstamo</a>
+        <a class="btn btn-outline-warning" href="{% url 'lista_prestamos' %}"><i class="bi bi-clock-history"></i> Historial</a>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <h3 class="mb-2 text-danger"><i class="bi bi-cash-stack"></i> Multas</h3>
+      <p class="text-muted">Gestiona las multas generadas por atrasos o daños.</p>
+      <div class="d-flex gap-2">
+        <a class="btn btn-danger" href="{% url 'crear_multa' %}"><i class="bi bi-plus-circle"></i> Registrar Multa</a>
+        <a class="btn btn-outline-danger" href="{% url 'lista_multa' %}"><i class="bi bi-list"></i> Ver Multas</a>
+      </div>
+    </div>
+  </div>
+
 </div>
-
-<!-- SECCIONES DETALLADAS -->
-<div class="container my-5">
-
-    <section id="autores" class="mb-5">
-        <h2 class="text-primary"><i class="bi bi-pen"></i> Autores</h2>
-        <p>Desde aquí puedes administrar toda la información de los autores.</p>
-        <button class="btn btn-primary"><i class="bi bi-plus-circle"></i> Agregar Autor</button>
-        <button class="btn btn-outline-primary"><i class="bi bi-list-ul"></i> Ver Autores</button>
-    </section>
-
-    <section id="libros" class="mb-5">
-        <h2 class="text-success"><i class="bi bi-book"></i> Libros</h2>
-        <p>Gestiona el catálogo de libros disponibles en la biblioteca.</p>
-        <button class="btn btn-success"><i class="bi bi-plus-circle"></i> Agregar Libro</button>
-        <button class="btn btn-outline-success"><i class="bi bi-list-ul"></i> Ver Libros</button>
-    </section>
-
-    <section id="prestamos" class="mb-5">
-        <h2 class="text-warning"><i class="bi bi-arrow-left-right"></i> Préstamos</h2>
-        <p>Registra, controla y devuelve los préstamos realizados.</p>
-        <button class="btn btn-warning"><i class="bi bi-plus-circle"></i> Nuevo Préstamo</button>
-        <button class="btn btn-outline-warning"><i class="bi bi-clock-history"></i> Historial</button>
-    </section>
-
-    <section id="multas" class="mb-5">
-        <h2 class="text-danger"><i class="bi bi-cash-stack"></i> Multas</h2>
-        <p>Gestiona las multas generadas por atrasos o daños.</p>
-        <button class="btn btn-danger"><i class="bi bi-plus-circle"></i> Registrar Multa</button>
-        <button class="btn btn-outline-danger"><i class="bi bi-list-ul"></i> Ver Multas</button>
-    </section>
-
-</div>
-</body>
-{% endblock  %}
+{% endblock %}

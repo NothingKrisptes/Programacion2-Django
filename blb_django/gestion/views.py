@@ -184,10 +184,6 @@ def guardarLibroOpenLibrary(request):
 
     return redirect("lista_libros")
 
-def lista_autores(request):
-    autores = Autor.objects.all() #Devuelve toda la lista 
-    return render(request, 'gestion/templates/autores.html',{'autores':autores})
-
 @login_required
 @require_POST
 def reactivar_libro(request, pk):
@@ -198,6 +194,11 @@ def reactivar_libro(request, pk):
     libro.save()  # recalcula disponible con tu save()
     messages.success(request, "Libro reactivado correctamente.")
     return redirect("lista_libros")
+
+@login_required
+def lista_autores(request):
+    autores = Autor.objects.filter(activo=True).order_by("apellido", "nombre")
+    return render(request, "gestion/templates/autores.html", {"autores": autores})
 
 @login_required
 def crear_autor(request, id=None):
@@ -223,6 +224,15 @@ def crear_autor(request, id=None):
                'titulo':'Editar Autor'if modo == 'Editar' else 'Crear Autor',
                'texto_boton': 'Guardar cambios' if modo == 'Editar' else 'Crear'}
     return render(request, 'gestion/templates/crear_autores.html', context)
+
+@login_required
+@require_POST
+def inactivar_autor(request, id):
+    autor = get_object_or_404(Autor, id=id)
+    autor.activo = False
+    autor.save()
+    messages.success(request, "Autor inactivado.")
+    return redirect("lista_autores")
 
 @login_required
 def lista_prestamos(request):
@@ -373,7 +383,7 @@ def crear_multa(request):
         if monto > Decimal("100.00"):
             messages.error(request, "La multa supera el máximo permitido (100.00).")
             return redirect("crear_multa")
-
+        
         multa = Multa.objects.create(
             prestamo=prestamo,
             tipo=tipo,

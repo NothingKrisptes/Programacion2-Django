@@ -35,9 +35,10 @@ urlpatterns = [
     path('autores/',lista_autores, name="lista_autores"),
     path('autores/nuevo/',crear_autor, name="crear_autores"),
     path('autores/<int:id>/editar/',crear_autor, name="editar_autores"),
+    path("autores/<int:id>/eliminar/", inactivar_autor, name="eliminar_autor"),
     
     #Prestamos
-    path('prestamos/', lista_prestamos, name="lista_prestamo"),
+    path('prestamos/', lista_prestamos, name="lista_prestamos"),
     path('prestamos/nuevo/', crear_prestamos, name="crear_prestamos"),
     path('prestamos/<int:id>/', detalle_prestamo, name="detalle_prestamo"),
     path('prestamos/<int:id>/devolver/', devolver_prestamo, name="devolver_prestamo"),
