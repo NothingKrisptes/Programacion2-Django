@@ -23,7 +23,7 @@ urlpatterns = [
     
     #Libros
     path('libros/', LibroListView.as_view(), name="lista_libros"),
-    path('libros/nuevo/',crear_libro, name="crear_libro"),
+    path('libros/nuevo/', LibroCreateView.as_view(), name="crear_libro"),
     path('libros/openlibrary/', buscarLibroOpenLibrary, name="buscar_libro_openlibrary"),
     path('libros/openlibrary/guardar/', guardarLibroOpenLibrary, name="guardar_libro_openlibrary"),
     
@@ -33,11 +33,15 @@ urlpatterns = [
     path('autores/<int:id>/editar/',crear_autor, name="editar_autores"),
     
     #Prestamos
-    path('prestamos/',lista_prestamos, name="lista_prestamo"),
-    path('prestamos/nuevo/',crear_prestamos, name="crear_prestamos"),
-    path('prestamos/<int:id>', detalle_prestamo, name="detalle_prestamo"),
+    path('prestamos/', lista_prestamos, name="lista_prestamo"),
+    path('prestamos/nuevo/', crear_prestamos, name="crear_prestamos"),
+    path('prestamos/<int:id>/', detalle_prestamo, name="detalle_prestamo"),
+    path('prestamos/<int:id>/devolver/', devolver_prestamo, name="devolver_prestamo"),
     
     #Multas
     path('multas/',lista_multas, name="lista_multa"),
-    path('multas/nuevo/<int:prestamo_id>',crear_multa, name="crear_multa"),
+    path('multas/nuevo/', crear_multa, name="crear_multa"),
+    path('multas/nuevo/<int:prestamo_id>/', crear_multa, name="crear_multa_prestamo"),
+    path('multas/<int:multaId>/pago/', multaPagoWizard, name="multa_pago_wizard"),
+
 ]

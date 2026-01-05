@@ -14,6 +14,9 @@
     <div class="mb-2">
       <label class="form-label">Nombre del libro</label>
       <input class="form-control" type="text" name="nombreLibro" value="{{ query }}" placeholder="Ej: Fundación" required>
+
+      <label class="form-label mt-2" for="id_stock">Stock</label>
+      <input class="form-control" type="number" id="id_stock" name="stock" min="0" value="{{ stock|default:1 }}" required>
     </div>
     <button class="btn btn-primary" type="submit">Buscar</button>
   </form>
@@ -46,6 +49,7 @@
             <form method="post" action="{% url 'guardar_libro_openlibrary' %}"
                   onsubmit="return confirm('¿Deseas guardar este libro en tu sistema?');">
               {% csrf_token %}
+
               <input type="hidden" name="titulo" value="{{ data.titulo }}">
               <input type="hidden" name="autorNombre" value="{{ data.autorNombre }}">
               <input type="hidden" name="editorialNombre" value="{{ data.editorialNombre }}">
@@ -54,6 +58,9 @@
               <input type="hidden" name="genero" value="{{ data.genero }}">
               <input type="hidden" name="descripcion" value="{{ data.descripcion }}">
               <input type="hidden" name="coverId" value="{{ data.coverId }}">
+
+              <!-- CLAVE: reenviar stock en el form que guarda -->
+              <input type="hidden" name="stock" value="{{ stock|default:1 }}">
 
               <div class="d-flex gap-2">
                 <button class="btn btn-success" type="submit">Guardar libro</button>
@@ -67,4 +74,5 @@
     </div>
   {% endif %}
 </div>
+
 {% endblock %}

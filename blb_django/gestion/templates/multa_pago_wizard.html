@@ -1,0 +1,37 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4" style="max-width: 720px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="m-0">Multa #{{ multa.id }}</h2>
+    <a class="btn btn-outline-secondary" href="{% url 'lista_multa' %}">Volver</a>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div class="mb-2"><b>Usuario:</b> {{ multa.prestamo.usuario.username }}</div>
+      <div class="mb-2"><b>Préstamo:</b> {{ multa.prestamo }}</div>
+      <div class="mb-2"><b>Tipo:</b> {{ multa.get_tipo_display }}</div>
+      <div class="mb-2"><b>Monto:</b> ${{ multa.monto }}</div>
+      <div class="mb-2"><b>Fecha:</b> {{ multa.fecha }}</div>
+      <div class="mb-0"><b>Estado:</b> {% if multa.pagada %}Pagada{% else %}Pendiente{% endif %}</div>
+      {% if multa.fechaPago %}
+        <div class="mt-2 text-muted"><b>Pagó el:</b> {{ multa.fechaPago }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not multa.pagada %}
+    <form method="post" onsubmit="return confirm('¿Confirmas que esta multa fue pagada?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="markPaid">
+      <button class="btn btn-success" type="submit">Marcar como pagada</button>
+    </form>
+  {% else %}
+    <form method="post" onsubmit="return confirm('¿Seguro que deseas revertirla a pendiente?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="markPending">
+      <button class="btn btn-warning" type="submit">Revertir a pendiente</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

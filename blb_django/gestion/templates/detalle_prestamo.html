@@ -1,0 +1,63 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="m-0">Préstamo #{{ prestamo.id }}</h2>
+      <small class="text-muted">Detalle y acciones</small>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'lista_prestamo' %}">Volver</a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="mb-2"><b>Libro:</b> {{ prestamo.libro }}</div>
+          <div class="mb-2"><b>Usuario:</b> {{ prestamo.usuario.username }}</div>
+          <div class="mb-2"><b>Fecha préstamo:</b> {{ prestamo.fecha_prestamos }}</div>
+          <div class="mb-2"><b>Fecha máxima:</b> {{ prestamo.fecha_max }}</div>
+          <div class="mb-2"><b>Fecha devolución:</b> {{ prestamo.fecha_devolucion|default:"No devuelto" }}</div>
+          <hr>
+          <div class="mb-2"><b>Días de retraso:</b> {{ prestamo.dias_retraso }}</div>
+          <div class="mb-0"><b>Multa por retraso:</b> ${{ prestamo.multa_retraso }}</div>
+        </div>
+
+        <div class="card-footer bg-white d-flex gap-2">
+          {% if not prestamo.fecha_devolucion %}
+            <form method="post" action="{% url 'devolver_prestamo' prestamo.id %}" onsubmit="return confirm('¿Confirmar devolución?');">
+              {% csrf_token %}
+              <button class="btn btn-success" type="submit">Marcar como devuelto</button>
+            </form>
+          {% else %}
+            <span class="badge bg-success align-self-center">Préstamo cerrado</span>
+          {% endif %}
+
+          <a class="btn btn-outline-primary" href="{% url 'crear_multa' %}">Crear multa</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">Multas del préstamo</div>
+        <div class="card-body">
+          <ul class="list-group">
+            {% for m in multas %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div><b>{{ m.get_tipo_display }}</b> - ${{ m.monto }}</div>
+                  <small class="text-muted">{% if m.pagada %}Pagada{% else %}Pendiente{% endif %}</small>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'multa_pago_wizard' m.id %}">Ver</a>
+              </li>
+            {% empty %}
+              <li class="list-group-item">No hay multas.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

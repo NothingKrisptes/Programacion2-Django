@@ -15,17 +15,22 @@ class Autor(models.Model):
 class Libro(models.Model):
     titulo = models.CharField(max_length=50)
     autor = models.ForeignKey(Autor,related_name="Libros", on_delete=models.PROTECT)    #Aqui en vez de one2many, las relaciones se hacen con llaves
-    disponible = models.BooleanField(default=True)
     isbn = models.CharField(max_length=20, blank=True, null=True)
     paginas = models.IntegerField(blank=True, null=True)
     genero = models.CharField(max_length=100, blank=True, null=True)
     descripcion = models.TextField(blank=True, null=True)
     editorial = models.CharField(max_length=100, blank=True, null=True)
     coverId = models.IntegerField(blank=True, null=True)
+    stock = models.PositiveIntegerField(default=1)
+    disponible = models.BooleanField(default=True)
     
     def __str__(self):
         return f"{self.titulo} {self.autor}"  #En este apartado que es visual no hay que hacer makemigrations
     
+    def save(self, *args, **kwargs):
+        self.disponible = self.stock > 0
+        super().save(*args, **kwargs) 
+
 class Prestamo(models.Model):
     libro = models.ForeignKey(Libro,related_name="Prestamos",on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="Prestamos", on_delete=models.PROTECT)  #Usuarios propios de Django, se importa desde el modelo de settings
@@ -60,17 +65,18 @@ class Prestamo(models.Model):
 class Multa(models.Model):
     prestamo = models.ForeignKey(Prestamo,related_name="Multas", on_delete=models.PROTECT)
     tipo = models.CharField(max_length=10, choices=(('r','retraso'),('p','perdida'),('d','deterioro'))) #Choices se debe de definir como tupla de tuplas
-    monto = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    monto = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     pagada = models.BooleanField(default=False)
     fecha = models.DateField(default=timezone.now)
-    
+    fechaPago = models.DateTimeField(blank=True, null=True)
+
     def __str__(self):
         return f"Multa {self.tipo} - {self.monto} - {self.prestamo}"
     
     def save(self, *args, **kwargs): #Los valores de args son opcionales asi que no me genera error si no se envia nada
         if self.tipo == 'r' and self.monto == 0:
             self.monto = self.prestamo.multa_retraso
-        super().save(*args **kwargs) #El super es para redefinir una funcion desde la funcion padre
+        super().save(*args, **kwargs) #El super es para redefinir una funcion desde la funcion padre
         
 
 #Como django puede usar diferentes base de datos es necesario hacer una migracion para pasar de codigo py a objetos en la base de datos

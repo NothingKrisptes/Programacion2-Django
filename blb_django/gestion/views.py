@@ -14,6 +14,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse_lazy
 from django.contrib import messages
 from .services.openLibraryService import fetchBookByTitle, OpenLibraryError # Importar el servicio de OpenLibrary
+from django.views.decorators.http import require_http_methods 
+from datetime import timedelta
+from decimal import Decimal, InvalidOperation
+from django.db.models import F
 
 # Create your views here.
 
@@ -56,11 +60,22 @@ def crear_libro(request):
 #Creacion de libros con OpenLibrary  
 @login_required
 def buscarLibroOpenLibrary(request):
-    contexto = {"data": None, "errorMsg": None, "query": ""}
+    contexto = {"data": None, "errorMsg": None, "query": "", "stock": 1}
 
     if request.method == "POST":
         nombreLibro = (request.POST.get("nombreLibro") or "").strip()
         contexto["query"] = nombreLibro
+
+        # Recuperar stock del FORM 1 para poder reenviarlo luego en el FORM 2
+        stock_raw = (request.POST.get("stock") or "1").strip()
+        try:
+            stock = int(stock_raw)
+            if stock < 0:
+                stock = 0
+        except ValueError:
+            stock = 1
+        contexto["stock"] = stock
+
         try:
             contexto["data"] = fetchBookByTitle(nombreLibro)
         except OpenLibraryError as e:
@@ -68,55 +83,69 @@ def buscarLibroOpenLibrary(request):
 
     return render(request, "gestion/templates/buscar_libro_openlibrary.html", contexto)
 
-
 @login_required
 def guardarLibroOpenLibrary(request):
     if request.method != "POST":
         return redirect("buscar_libro_openlibrary")
 
     titulo = (request.POST.get("titulo") or "").strip()
-    autorNombre = (request.POST.get("autorNombre") or "").strip()
+    autor_nombre = (request.POST.get("autorNombre") or "").strip()
+    editorial = (request.POST.get("editorialNombre") or "").strip()
+    isbn = (request.POST.get("isbn") or "").strip()
+    genero = (request.POST.get("genero") or "").strip()
+    descripcion = (request.POST.get("descripcion") or "").strip()
+    coverId_raw = (request.POST.get("coverId") or "").strip()
+    paginas_raw = (request.POST.get("paginas") or "").strip()
+    stock_raw = (request.POST.get("stock") or "1").strip()
 
-    isbn = (request.POST.get("isbn") or "").strip() or None
-    editorial = (request.POST.get("editorialNombre") or "").strip() or None
-    genero = (request.POST.get("genero") or "").strip() or None
-    descripcion = (request.POST.get("descripcion") or "").strip() or None
-
-    paginasRaw = (request.POST.get("paginas") or "").strip()
-    paginas = int(paginasRaw) if paginasRaw.isdigit() else None
-
-    coverIdRaw = (request.POST.get("coverId") or "").strip()
-    coverId = int(coverIdRaw) if coverIdRaw.isdigit() else None
-
-    if not titulo or not autorNombre:
-        messages.error(request, "Faltan datos para guardar el libro.")
+    if not titulo:
+        messages.error(request, "Falta el título.")
         return redirect("buscar_libro_openlibrary")
 
-    # Autor: OpenLibrary suele traer un solo string; se guarda todo en 'nombre'
-    autor, _ = Autor.objects.get_or_create(
-        nombre=autorNombre,
-        apellido="",
-        defaults={"bibliografia": ""},
-    )
+    # stock seguro
+    try:
+        stock = int(stock_raw)
+        if stock < 0:
+            stock = 0
+    except ValueError:
+        stock = 1
 
-    # Evitar duplicados por ISBN si existe (opcional pero útil)
-    if isbn and Libro.objects.filter(isbn=isbn).exists():
-        messages.warning(request, "Ya existe un libro con ese ISBN.")
-        return redirect("lista_libros")
+    # páginas seguras
+    try:
+        paginas = int(paginas_raw) if paginas_raw else None
+    except ValueError:
+        paginas = None
 
-    libro = Libro.objects.create(
+    # coverId seguro
+    try:
+        coverId = int(coverId_raw) if coverId_raw else None
+    except ValueError:
+        coverId = None
+
+    # crear / obtener autor local desde el string
+    if autor_nombre:
+        partes = autor_nombre.split()
+        nombre = partes[0] if partes else "Desconocido"
+        apellido = " ".join(partes[1:]) if len(partes) > 1 else ""
+    else:
+        nombre, apellido = "Desconocido", ""
+
+    autor, _ = Autor.objects.get_or_create(nombre=nombre, apellido=apellido)
+
+    Libro.objects.create(
         titulo=titulo,
         autor=autor,
-        disponible=True,
-        isbn=isbn,
+        isbn=isbn or None,
         paginas=paginas,
-        genero=genero,
-        descripcion=descripcion,
-        editorial=editorial,
+        genero=genero or None,
+        descripcion=descripcion or None,
+        editorial=editorial or None,
         coverId=coverId,
+        stock=stock,
+        # disponible lo calcula tu save() por stock
     )
 
-    messages.success(request, f"Libro guardado: {libro.titulo}")
+    messages.success(request, "Libro guardado correctamente.")
     return redirect("lista_libros")
 
 def lista_autores(request):
@@ -148,9 +177,10 @@ def crear_autor(request, id=None):
                'texto_boton': 'Guardar cambios' if modo == 'Editar' else 'Crear'}
     return render(request, 'gestion/templates/crear_autores.html', context)
 
+@login_required
 def lista_prestamos(request):
-    prestamos = Prestamo.objects.all() #Devuelve toda la lista 
-    return render(request, 'gestion/templates/prestamos.html',{'prestamos':prestamos})
+    prestamos = Prestamo.objects.all().order_by('-id')
+    return render(request, 'gestion/templates/prestamos.html', {'prestamos': prestamos})
 
 # def crear_prestamo(request):
 #     libros = Libro.objects.all()
@@ -172,48 +202,162 @@ def lista_prestamos(request):
 #     return render(request, 'gestion/templates/crear_prestamos.html', {'libros':libros}, {'usuarios': usuarios})
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def crear_prestamos(request):
     if not request.user.has_perm('gestion.gestionar_prestamos'):
         return HttpResponseForbidden()
-    
-    libro = Libro.objects.filter(disponible=True)
-    usuario = User.objects.all()
+
+    libros = Libro.objects.filter(stock__gt=0).order_by('titulo')
+    usuarios = User.objects.all()
+
     if request.method == 'POST':
         libro_id = request.POST.get('libro')
         usuario_id = request.POST.get('usuario')
-        fecha_prestamos = request.POST.get('fecha_prestamos')
-        if libro_id and usuario_id and fecha_prestamos:
-            libro = get_object_or_404(Libro, id=libro_id)
-            usuario = get_object_or_404(User, id=usuario_id)
-            prestamo = Prestamo.objects.create(libro = libro,
-                                               usuario = usuario,
-                                               fecha_prestamos = fecha_prestamos,)
-            libro.disponible = False
-            libro.save()
-            return redirect('detalle_prestamo', id = prestamo)
-    fecha = (timezone.now().date()).isoformat() #YYYY-MM-DD
-    return render(request,'gestion/templates/crear_prestamos.html', {'libros':libro, 
-                                                                    'usuario':usuario,
-                                                                    'fecha': fecha})
+        fecha_prestamos_raw = (request.POST.get('fecha_prestamos') or "").strip()
 
-def detalle_prestamo(request):
-    pass
+        if not (libro_id and usuario_id and fecha_prestamos_raw):
+            messages.error(request, "Faltan datos para crear el préstamo.")
+            return redirect('crear_prestamos')
 
-def lista_multas (request):
-    multas = Multa.objects.all() #Devuelve toda la lista 
-    return render(request, 'gestion/templates/multas.html',{'multas':multas})
+        libro = get_object_or_404(Libro, id=libro_id)
+        usuario = get_object_or_404(User, id=usuario_id)
+
+        if libro.stock <= 0:
+            messages.error(request, "No hay stock disponible para este libro.")
+            return redirect('crear_prestamos')
+
+        fecha_prestamos = timezone.datetime.fromisoformat(fecha_prestamos_raw).date()
+        fecha_max = fecha_prestamos + timedelta(days=7)
+
+        prestamo = Prestamo.objects.create(
+            libro=libro,
+            usuario=usuario,
+            fecha_prestamos=fecha_prestamos,
+            fecha_max=fecha_max,
+        )
+
+        # restar stock
+        Libro.objects.filter(id=libro.id).update(stock=F('stock') - 1)
+        libro.refresh_from_db()
+        libro.save()  # recalcula disponible
+
+        return redirect('detalle_prestamo', id=prestamo.id)
+
+    hoy = timezone.now().date().isoformat()
+    return render(request, 'gestion/templates/crear_prestamos.html', {
+        'libros': libros,
+        'usuarios': usuarios,
+        'fecha': hoy
+    })
+
+@login_required
+def detalle_prestamo(request, id):
+    prestamo = get_object_or_404(Prestamo, id=id)
+    multas = prestamo.Multas.all().order_by('-id')
+    return render(request, "gestion/templates/detalle_prestamo.html", {
+        "prestamo": prestamo,
+        "multas": multas,
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def devolver_prestamo(request, id):
+    prestamo = get_object_or_404(Prestamo, id=id)
+
+    if prestamo.fecha_devolucion:
+        return redirect("detalle_prestamo", id=prestamo.id)
+
+    prestamo.fecha_devolucion = timezone.now().date()
+    prestamo.save()
+
+    # sumar stock
+    Libro.objects.filter(id=prestamo.libro.id).update(stock=F('stock') + 1)
+    prestamo.libro.refresh_from_db()
+    prestamo.libro.save()  # recalcula disponible
+
+    return redirect("detalle_prestamo", id=prestamo.id)
+
+@login_required
+def lista_multas(request):
+    multas = Multa.objects.all().order_by('-id')
+    return render(request, 'gestion/templates/multas.html', {'multas': multas})
+
+@login_required
+@require_http_methods(["GET", "POST"])
 def crear_multa(request):
-    autores = Autor.objects.all()
+    prestamos = Prestamo.objects.all().order_by('-id')
 
-    if request.method == 'POST':
-        titulo = request.POST.get('titulo')
-        autor_id = request.POST.get('autor')
-        
-        if titulo and autor_id:
-            autor = get_object_or_404(Autor, id=autor_id)
-            Libro.objects.create(titulo=titulo, autor=autor)
-            return redirect(lista_libros)
-    return render(request, 'gestion/templates/crear_libros.html', {'autores':autores})
+    if request.method == "POST":
+        prestamo_id = request.POST.get("prestamo")
+        tipo = (request.POST.get("tipo") or "").strip()  # r, p, d
+        extra_raw = (request.POST.get("extra") or "").strip()
+
+        if not prestamo_id or tipo not in ("r", "p", "d"):
+            messages.error(request, "Faltan datos o el tipo de multa es inválido.")
+            return redirect("crear_multa")
+
+        prestamo = get_object_or_404(Prestamo, id=prestamo_id)
+
+        # BASE RETRASO: solo si hay retraso
+        if prestamo.dias_retraso > 0:
+            base = Decimal(str(prestamo.multa_retraso)).quantize(Decimal("0.01"))
+        else:
+            base = Decimal("0.00")
+
+        extra = Decimal("0.00")
+
+        if tipo == "d":
+            # deterioro: 5 o 10 (default 5)
+            try:
+                extra = Decimal(extra_raw) if extra_raw else Decimal("5.00")
+            except InvalidOperation:
+                extra = Decimal("5.00")
+
+            if extra not in (Decimal("5.00"), Decimal("10.00")):
+                extra = Decimal("5.00")
+
+        elif tipo == "p":
+            # pérdida: fijo 20
+            extra = Decimal("20.00")
+
+        # retraso puro (r): extra queda 0
+        monto = (base + extra).quantize(Decimal("0.01"))
+
+        if monto > Decimal("100.00"):
+            messages.error(request, "La multa supera el máximo permitido (100.00).")
+            return redirect("crear_multa")
+
+        multa = Multa.objects.create(
+            prestamo=prestamo,
+            tipo=tipo,
+            monto=monto,
+            pagada=False,
+        )
+
+        return redirect("multa_pago_wizard", multaId=multa.id)
+
+    return render(request, "gestion/templates/crear_multas.html", {"prestamos": prestamos})
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def multaPagoWizard(request, multaId):
+    multa = get_object_or_404(Multa, id=multaId)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "markPaid":
+            multa.pagada = True
+            multa.fechaPago = timezone.now()
+            multa.save()
+        elif action == "markPending":
+            multa.pagada = False
+            multa.fechaPago = None
+            multa.save()
+
+        return redirect("lista_multa")
+
+    return render(request, "gestion/templates/multa_pago_wizard.html", {"multa": multa})
 
 def registro(request):
     if request.method == 'POST':
@@ -253,16 +397,16 @@ class LibroDetalleView(LoginRequiredMixin, DetailView):
     
 class LibroCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Libro
-    fields = ['titulo', 'autor', 'disponible']
+    fields = ['titulo', 'autor', 'isbn', 'paginas', 'genero', 'descripcion', 'editorial', 'coverId', 'stock']
     template_name = 'gestion/templates/crear_libros.html'
-    success_url = reverse_lazy('libro_list') #Direcciona a la url que eligamos
+    success_url = reverse_lazy('lista_libros') #Direcciona a la url que eligamos
     permission_required = 'gestion.add_libro'
 
-class LibroUpdateView(LoginRequiredMixin,PermissionRequiredMixin, UpdateView):
+class LibroUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Libro
-    fields = ['titulo', 'autor']
+    fields = ['titulo', 'autor', 'isbn', 'paginas', 'genero', 'descripcion', 'editorial', 'coverId', 'stock']
     template_name = 'gestion/templates/editar_libros.html'
-    success_url = reverse_lazy('libro_list')
+    success_url = reverse_lazy('lista_libros')
     permission_required = 'gestion.change_libro'
     
 class LibroDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
