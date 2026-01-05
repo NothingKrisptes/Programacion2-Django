@@ -67,9 +67,12 @@
             <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_libro' libro.pk %}">
               Editar
             </a>
-            <a class="btn btn-sm btn-outline-danger" href="{% url 'eliminar_libro' libro.pk %}">
-              Eliminar
-            </a>
+            <form action="{% url 'eliminar_libro' libro.pk %}" method="POST" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro?')">
+                    Eliminar
+                </button>
+            </form>
           </div>
         </div>
 

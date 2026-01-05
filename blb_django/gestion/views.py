@@ -254,7 +254,7 @@ def crear_prestamos(request):
     if not request.user.has_perm('gestion.gestionar_prestamos'):
         return HttpResponseForbidden()
 
-    libros = Libro.objects.filter(stock__gt=0).order_by('titulo')
+    libros = Libro.objects.filter(activo= True, stock__gt=0).order_by('titulo')
     usuarios = User.objects.all()
 
     if request.method == 'POST':
