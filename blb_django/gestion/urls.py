@@ -8,7 +8,7 @@ urlpatterns = [
     path("error/", error, name = "error"),
     
     # Path con class View
-    path('libros_view/', LibroListView.as_view(), name = "libros_view"),
+    #path('libros_view/', LibroListView.as_view(), name = "libros_view"),
     
     #Gestion Usuarios
     path('login/', auth_views.LoginView.as_view(), name='login'),
@@ -22,8 +22,10 @@ urlpatterns = [
     path('registro/',registro, name="registro"),
     
     #Libros
-    path('libros/',lista_libros, name="lista_libros"),
+    path('libros/', LibroListView.as_view(), name="lista_libros"),
     path('libros/nuevo/',crear_libro, name="crear_libro"),
+    path('libros/openlibrary/', buscarLibroOpenLibrary, name="buscar_libro_openlibrary"),
+    path('libros/openlibrary/guardar/', guardarLibroOpenLibrary, name="guardar_libro_openlibrary"),
     
     #Autores
     path('autores/',lista_autores, name="lista_autores"),

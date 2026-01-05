@@ -12,6 +12,8 @@ from .models import Autor,Libro,Prestamo,Multa
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
+from django.contrib import messages
+from .services.openLibraryService import fetchBookByTitle, OpenLibraryError # Importar el servicio de OpenLibrary
 
 # Create your views here.
 
@@ -50,7 +52,73 @@ def crear_libro(request):
 #             autor.save()
 #             return redirect('lista_autores')
 #     return render(request, 'gestion/templates/editar_autores.html',{'autor':autor})
-       
+
+#Creacion de libros con OpenLibrary  
+@login_required
+def buscarLibroOpenLibrary(request):
+    contexto = {"data": None, "errorMsg": None, "query": ""}
+
+    if request.method == "POST":
+        nombreLibro = (request.POST.get("nombreLibro") or "").strip()
+        contexto["query"] = nombreLibro
+        try:
+            contexto["data"] = fetchBookByTitle(nombreLibro)
+        except OpenLibraryError as e:
+            contexto["errorMsg"] = str(e)
+
+    return render(request, "gestion/templates/buscar_libro_openlibrary.html", contexto)
+
+
+@login_required
+def guardarLibroOpenLibrary(request):
+    if request.method != "POST":
+        return redirect("buscar_libro_openlibrary")
+
+    titulo = (request.POST.get("titulo") or "").strip()
+    autorNombre = (request.POST.get("autorNombre") or "").strip()
+
+    isbn = (request.POST.get("isbn") or "").strip() or None
+    editorial = (request.POST.get("editorialNombre") or "").strip() or None
+    genero = (request.POST.get("genero") or "").strip() or None
+    descripcion = (request.POST.get("descripcion") or "").strip() or None
+
+    paginasRaw = (request.POST.get("paginas") or "").strip()
+    paginas = int(paginasRaw) if paginasRaw.isdigit() else None
+
+    coverIdRaw = (request.POST.get("coverId") or "").strip()
+    coverId = int(coverIdRaw) if coverIdRaw.isdigit() else None
+
+    if not titulo or not autorNombre:
+        messages.error(request, "Faltan datos para guardar el libro.")
+        return redirect("buscar_libro_openlibrary")
+
+    # Autor: OpenLibrary suele traer un solo string; se guarda todo en 'nombre'
+    autor, _ = Autor.objects.get_or_create(
+        nombre=autorNombre,
+        apellido="",
+        defaults={"bibliografia": ""},
+    )
+
+    # Evitar duplicados por ISBN si existe (opcional pero útil)
+    if isbn and Libro.objects.filter(isbn=isbn).exists():
+        messages.warning(request, "Ya existe un libro con ese ISBN.")
+        return redirect("lista_libros")
+
+    libro = Libro.objects.create(
+        titulo=titulo,
+        autor=autor,
+        disponible=True,
+        isbn=isbn,
+        paginas=paginas,
+        genero=genero,
+        descripcion=descripcion,
+        editorial=editorial,
+        coverId=coverId,
+    )
+
+    messages.success(request, f"Libro guardado: {libro.titulo}")
+    return redirect("lista_libros")
+
 def lista_autores(request):
     autores = Autor.objects.all() #Devuelve toda la lista 
     return render(request, 'gestion/templates/autores.html',{'autores':autores})
@@ -176,7 +244,7 @@ class LibroListView(LoginRequiredMixin, ListView):
     model = Libro
     template_name = 'gestion/templates/libros_view.html'
     context_object_name = 'libros'
-    paginate_by = 1 # Lista primaria de 10 objetos que se puede ir recorriendo "pestañas de paginas"
+    paginate_by = 8 # Lista primaria de 10 objetos que se puede ir recorriendo "pestañas de paginas"
     
 class LibroDetalleView(LoginRequiredMixin, DetailView):
     model = Libro

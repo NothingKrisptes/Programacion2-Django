@@ -1,0 +1,70 @@
+{% extends "index.html" %}
+{% block contenido %}
+
+<div class="container py-4">
+  <h2 class="mb-3">Buscar libro en OpenLibrary</h2>
+
+  {% if errorMsg %}
+    <div class="alert alert-danger">{{ errorMsg }}</div>
+  {% endif %}
+
+  <!-- FORM 1: Buscar / Previsualizar -->
+  <form method="post" class="card p-3 mb-4">
+    {% csrf_token %}
+    <div class="mb-2">
+      <label class="form-label">Nombre del libro</label>
+      <input class="form-control" type="text" name="nombreLibro" value="{{ query }}" placeholder="Ej: Fundación" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Buscar</button>
+  </form>
+
+  {% if data %}
+    <!-- PREVIEW -->
+    <div class="card">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3 text-center">
+            {% if data.coverId %}
+              <img class="img-fluid rounded"
+                   src="https://covers.openlibrary.org/b/id/{{ data.coverId }}-M.jpg"
+                   alt="Portada">
+            {% else %}
+              <div class="text-muted">Sin portada</div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-9">
+            <h4 class="mb-2">{{ data.titulo }}</h4>
+            <p class="mb-1"><b>Autor:</b> {{ data.autorNombre }}</p>
+            <p class="mb-1"><b>Editorial:</b> {{ data.editorialNombre }}</p>
+            <p class="mb-1"><b>ISBN:</b> {{ data.isbn }}</p>
+            <p class="mb-1"><b>Páginas:</b> {{ data.paginas }}</p>
+            <p class="mb-1"><b>Género:</b> {{ data.genero }}</p>
+            <p class="mb-2"><b>Descripción:</b> {{ data.descripcion }}</p>
+
+            <!-- FORM 2: Guardar -->
+            <form method="post" action="{% url 'guardar_libro_openlibrary' %}"
+                  onsubmit="return confirm('¿Deseas guardar este libro en tu sistema?');">
+              {% csrf_token %}
+              <input type="hidden" name="titulo" value="{{ data.titulo }}">
+              <input type="hidden" name="autorNombre" value="{{ data.autorNombre }}">
+              <input type="hidden" name="editorialNombre" value="{{ data.editorialNombre }}">
+              <input type="hidden" name="isbn" value="{{ data.isbn }}">
+              <input type="hidden" name="paginas" value="{{ data.paginas }}">
+              <input type="hidden" name="genero" value="{{ data.genero }}">
+              <input type="hidden" name="descripcion" value="{{ data.descripcion }}">
+              <input type="hidden" name="coverId" value="{{ data.coverId }}">
+
+              <div class="d-flex gap-2">
+                <button class="btn btn-success" type="submit">Guardar libro</button>
+                <a class="btn btn-secondary" href="{% url 'lista_libros' %}">Cancelar</a>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

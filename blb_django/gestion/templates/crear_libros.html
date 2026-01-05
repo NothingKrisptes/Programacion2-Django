@@ -5,6 +5,9 @@
 <h2> CREAR LIBRO </h2>
 <form method="POST">
     {% csrf_token %} <!-- Crea una cokies de sesion, obligando a que se cree por una persona y no se automatice por un robot-->
+    <a class="btn btn-primary mb-3" href="{% url 'buscar_libro_openlibrary' %}">
+        Autocompletar con OpenLibrary
+    </a> <br/>
     <label for = "id_titulo" name="titulo"> Titulo: </label>
     <input placeholder="dato" type="text" id="id_titulo" name="titulo" required> <br/> 
 
