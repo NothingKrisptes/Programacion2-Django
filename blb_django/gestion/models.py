@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings  #Para usar los usuarios de django
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 #En django todos los campos que creemos son obligatorios
@@ -72,14 +73,49 @@ class Multa(models.Model):
     fecha = models.DateField(default=timezone.now)
     fechaPago = models.DateTimeField(blank=True, null=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["prestamo", "tipo"], name="uniq_multa_por_prestamo_y_tipo"),
+        ]
+
     def __str__(self):
         return f"Multa {self.tipo} - {self.monto} - {self.prestamo}"
-    
+
+    def clean(self):
+        # Evitar revertir una multa pagada y evitar que cambie su valor/tipo.
+        if not self.pk:
+            return
+
+        original = Multa.objects.get(pk=self.pk)
+
+        if original.pagada:
+            # No permitir revertir
+            if self.pagada is False:
+                raise ValidationError("No se puede revertir una multa pagada.")
+
+            # No permitir alterar tipo/monto/prestamo después de pagada
+            if self.monto != original.monto or self.tipo != original.tipo or self.prestamo_id != original.prestamo_id:
+                raise ValidationError("No se puede modificar una multa ya pagada.")
+
     def save(self, *args, **kwargs): #Los valores de args son opcionales asi que no me genera error si no se envia nada
+        # Auto-monto para retraso si viene en 0
         if self.tipo == 'r' and self.monto == 0:
             self.monto = self.prestamo.multa_retraso
-        super().save(*args, **kwargs) #El super es para redefinir una funcion desde la funcion padre
-        
+
+        # Validación de reglas (no reversible)
+        self.full_clean()
+
+        super().save(*args, **kwargs)  #El super es para redefinir una funcion desde la funcion padre
+
+# Logs
+class LogEvento(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="logs")
+    accion = models.CharField(max_length=100)
+    detalle = models.TextField(blank=True, null=True)
+    fecha = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.fecha} - {self.usuario} - {self.accion}"
 
 #Como django puede usar diferentes base de datos es necesario hacer una migracion para pasar de codigo py a objetos en la base de datos
 #Que es ORM?

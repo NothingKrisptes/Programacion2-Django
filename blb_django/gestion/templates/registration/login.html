@@ -1,21 +1,42 @@
-{%extends "index.html"%}
-
+{% extends "index.html" %}
 {% block contenido %}
+<div class="container py-4" style="max-width: 520px;">
+  <div class="text-center mb-3">
+    <h2 class="m-0">Iniciar sesión</h2>
+    <div class="text-muted">Accede para gestionar préstamos, multas y catálogo.</div>
+  </div>
 
-<h2> Iniciar Sesion </h2>
+  <div class="card shadow-sm">
+    <div class="card-body p-4">
+      {% if form.errors %}
+        <div class="alert alert-danger mb-3">
+          Usuario o contraseña incorrectos. Verifica los datos e inténtalo de nuevo.
+        </div>
+      {% endif %}
 
-{%if form.errors %}
-<p> Usuario o contraseña incorrectos </p> <!-- Aqui creo el mensaje de error con el form.errors -->
-{%endif%}
+      <form method="post" novalidate>
+        {% csrf_token %}
 
-<form method='POST'>
-    {%csrf_token%}
-    <label for="id_username"> Usuario: </label>
-    <input type="text" name="username" id="id_username" required /></br>
+        <div class="mb-3">
+          <label for="id_username" class="form-label">Usuario</label>
+          <input type="text" name="username" id="id_username" class="form-control" required autocomplete="username">
+        </div>
 
-    <label for="id_password"> Contraseña: </label>
-    <input type="password" name="password" id="id_password" required /></br>
+        <div class="mb-3">
+          <label for="id_password" class="form-label">Contraseña</label>
+          <input type="password" name="password" id="id_password" class="form-control" required autocomplete="current-password">
+        </div>
 
-    <button type="submit"> Entrar </button>
-</form>
-{%endblock%}
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-box-arrow-in-right"></i> Entrar
+          </button>
+          <a href="{% url 'registro' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-person-plus"></i> Crear cuenta (cliente)
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

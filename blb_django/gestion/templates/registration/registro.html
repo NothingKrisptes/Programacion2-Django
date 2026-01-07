@@ -1,13 +1,58 @@
-{% extends "index.html"%}
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4" style="max-width: 720px;">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="m-0">Registro de cliente</h2>
+      <div class="text-muted">Crea tu cuenta para consultar el catálogo y tu estado de préstamos/multas.</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'login' %}">
+      <i class="bi bi-arrow-left"></i> Volver al login
+    </a>
+  </div>
 
-{%block contenido%}
+  <form method="post" class="card shadow-sm p-3" novalidate>
+    {% csrf_token %}
 
-<h2> Registro de usuario </h2>
-<form method='POST'>
-{{form.non_field_errors}}
-    {%csrf_token%}
-    {{form.as_p}} <!-- Modificando el div o p cambio el tipo de vista -->
-    <button type="submit" > Crear </button>
-</form>
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
 
-{%endblock%}
+    {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+
+        {% if field.help_text %}
+          <div class="form-text">{{ field.help_text }}</div>
+        {% endif %}
+
+        {% for error in field.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check2-circle"></i> Crear cuenta
+      </button>
+      <a class="btn btn-outline-secondary" href="{% url 'index' %}">Cancelar</a>
+    </div>
+  </form>
+
+  <script>
+    // Aplica clases Bootstrap a inputs generados por Django (si no las pones desde el form).
+    (function () {
+      const inputs = document.querySelectorAll('input, select, textarea');
+      inputs.forEach(el => {
+        if (!el.classList.contains('form-control') && el.type !== 'checkbox') {
+          el.classList.add('form-control');
+        }
+      });
+    })();
+  </script>
+</div>
+{% endblock %}

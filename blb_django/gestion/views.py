@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.contrib.auth.forms import UserCreationForm
@@ -19,6 +19,9 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from django.db.models import F
 from django.views.decorators.http import require_POST
+from .services.multas_service import ensure_multa_retraso
+from django.contrib.auth.decorators import user_passes_test
+from .forms import ClienteRegistroForm, AdminCrearUsuarioForm
 
 # Create your views here.
 
@@ -236,7 +239,13 @@ def inactivar_autor(request, id):
 
 @login_required
 def lista_prestamos(request):
-    prestamos = Prestamo.objects.all().order_by('-id')
+    prestamos = Prestamo.objects.all().order_by("-id")
+
+    # Generar/actualizar multas de retraso para préstamos no devueltos
+    for p in prestamos:
+        if not p.fecha_devolucion:
+            ensure_multa_retraso(p)
+
     return render(request, 'gestion/templates/prestamos.html', {'prestamos': prestamos})
 
 # def crear_prestamo(request):
@@ -310,11 +319,13 @@ def crear_prestamos(request):
 @login_required
 def detalle_prestamo(request, id):
     prestamo = get_object_or_404(Prestamo, id=id)
-    multas = prestamo.Multas.all().order_by('-id')
-    return render(request, "gestion/templates/detalle_prestamo.html", {
-        "prestamo": prestamo,
-        "multas": multas,
-    })
+
+    # Al entrar al detalle, asegurar multa de retraso si aplica
+    if not prestamo.fecha_devolucion:
+        ensure_multa_retraso(prestamo)
+
+    multas = prestamo.Multas.all().order_by("-id")
+    return render(request, 'gestion/templates/detalle_prestamo.html', {'prestamo': prestamo, 'multas': multas})
 
 @login_required
 @require_http_methods(["POST"])
@@ -400,40 +411,56 @@ def crear_multa(request):
 def multaPagoWizard(request, multaId):
     multa = get_object_or_404(Multa, id=multaId)
 
+    # (Opcional) Solo bibliotecario/admin debería poder marcar pagada:
+    if not request.user.has_perm("gestion.gestionar_prestamos"):
+        return HttpResponseForbidden("No tienes permisos para gestionar pagos de multas.")
+
     if request.method == "POST":
         action = request.POST.get("action")
-
-        if action == "markPaid":
+        if action == "markPaid" and not multa.pagada:
             multa.pagada = True
             multa.fechaPago = timezone.now()
             multa.save()
-        elif action == "markPending":
-            multa.pagada = False
-            multa.fechaPago = None
-            multa.save()
-
         return redirect("lista_multa")
 
     return render(request, "gestion/templates/multa_pago_wizard.html", {"multa": multa})
 
 def registro(request):
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+    if request.method == "POST":
+        form = ClienteRegistroForm(request.POST)
         if form.is_valid():
-            usuario = form.save()
-            try:
-                permiso = Permission.objects.get(codename='gestionar_prestamos')
-                usuario.user_permissions.add(permiso)
-            except Permission.DoesNotExist:
-                return redirect('error')
+            usuario = form.save(commit=True)  # el form ya pone first_name/last_name/email
+
+            # Asignación por grupo (rol)
+            grupo_cliente = Group.objects.get(name="CLIENTE")
+            usuario.groups.add(grupo_cliente)
+
             login(request, usuario)
-            return redirect('index')
+            messages.success(request, "Cuenta creada correctamente.")
+            return redirect("index")
     else:
-        form = UserCreationForm()   
-    return render(request, 'gestion/templates/registration/registro.html', {'form': form})
+        form = ClienteRegistroForm()
+
+    return render(request, "gestion/templates/registration/registro.html", {"form": form})
 
 def error(request):
     return render(request, 'gestion/templates/error.html',{'error':error})
+
+# Administración de usuarios por un admin
+def es_admin(user):
+    return user.is_authenticated and user.is_superuser
+
+@user_passes_test(es_admin)
+def nuevo_usuario(request):
+    if request.method == "POST":
+        form = AdminCrearUsuarioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Usuario creado correctamente.")
+            return redirect("index")
+    else:
+        form = AdminCrearUsuarioForm()
+    return render(request, "gestion/templates/nuevo_usuario.html", {"form": form})
 
 # TIPO DE VISTAS VERSION DJGANGO
 # Se necesitan las siguientes librerias

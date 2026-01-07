@@ -47,6 +47,12 @@
               </form>
             </li>
           {% endif %}
+          
+          {% if user.is_authenticated and user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'nuevo_usuario' %}">Nuevo Usuario</a>
+          </li>
+          {% endif %}
         </ul>
       </div>
     </div>

@@ -10,6 +10,9 @@ urlpatterns = [
     # Path con class View
     #path('libros_view/', LibroListView.as_view(), name = "libros_view"),
     
+    # Admin
+    path("usuarios/nuevo/", nuevo_usuario, name="nuevo_usuario"),
+
     #Gestion Usuarios
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('loguot/', auth_views.LogoutView.as_view(next_page='login'),name = "logout"), #Este caso toma el valor de la pagina de login/, el name define el nombre que se usa en next_page
