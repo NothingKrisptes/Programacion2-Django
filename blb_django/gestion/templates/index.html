@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestión de Bibliotecas</title>
 
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
@@ -19,7 +16,6 @@
 
 <body class="bg-light">
 
-  <!-- NAVBAR -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
     <div class="container">
       <a class="navbar-brand fw-bold" href="{% url 'index' %}">
@@ -32,33 +28,107 @@
 
       <div class="collapse navbar-collapse" id="navbarMenu">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-          <li class="nav-item"><a class="nav-link" href="{% url 'lista_autores' %}">Autores</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'lista_libros' %}">Libros</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'lista_prestamos' %}">Préstamos</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'lista_multa' %}">Multas</a></li>
 
-          {% if not user.is_authenticated %}
-            <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
-          {% else %}
-            <li class="nav-item">
-              <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button class="btn btn-sm btn-outline-light" type="submit">Cerrar sesión</button>
-              </form>
-            </li>
-          {% endif %}
-          
-          {% if user.is_authenticated and user.is_superuser %}
+          <!-- Libros: público (cliente sin login también) -->
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'nuevo_usuario' %}">Nuevo Usuario</a>
+            <a class="nav-link" href="{% url 'lista_libros' %}">Libros</a>
           </li>
+
+          <!-- Préstamos / Multas: solo bibliotecario/admin (permiso custom) -->
+          {% if user.is_authenticated and perms.gestion.gestionar_prestamos %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'lista_prestamos' %}">Préstamos</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'lista_multa' %}">Multas</a></li>
+          {% endif %}
+
+          <!-- Autores: opcional, solo si tiene view_autor -->
+          {% if user.is_authenticated and perms.gestion.view_autor %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'lista_autores' %}">Autores</a></li>
+          {% endif %}
+
+          <!-- Admin -->
+          {% if user.is_authenticated and user.is_superuser %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-shield-lock"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+
+              <li>
+                <a class="dropdown-item" href="{% url 'nuevo_usuario' %}">
+                  <i class="bi bi-person-plus"></i> Nuevo usuario
+                </a>
+              </li>
+
+              <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-header">Reportes (PDF)</li>
+
+              <li>
+                <a class="dropdown-item" href="{% url 'reporte_libros_prestados_pdf' %}">
+                  <i class="bi bi-file-earmark-pdf"></i> Libros prestados
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'reporte_usuarios_multados_pdf' %}">
+                  <i class="bi bi-file-earmark-pdf"></i> Usuarios multados
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'reporte_multas_total_pdf' %}">
+                  <i class="bi bi-file-earmark-pdf"></i> Multas (total)
+                </a>
+              </li>
+
+              <li><hr class="dropdown-divider"></li>
+
+              <li>
+                <a class="dropdown-item" href="{% url 'ver_logs' %}">
+                  <i class="bi bi-clipboard-data"></i> Ver logs
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+
+          <!-- Auth -->
+          {% if not user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'login' %}">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-sm btn-outline-light" href="{% url 'registro' %}">
+                <i class="bi bi-person-plus"></i> Registrarse
+              </a>
+            </li>
+          {% else %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-person-circle"></i> {{ user.username }}
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="{% url 'password_change' %}">
+                    <i class="bi bi-key"></i> Cambiar contraseña
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <form method="post" action="{% url 'logout' %}" class="px-3">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger w-100" type="submit">
+                      <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                    </button>
+                  </form>
+                </li>
+              </ul>
+            </li>
           {% endif %}
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Mensajes -->
   <div class="container mt-3">
     {% if messages %}
       {% for message in messages %}
@@ -67,7 +137,6 @@
     {% endif %}
   </div>
 
-  <!-- Contenido -->
   <main class="py-4">
     {% block contenido %}{% endblock %}
   </main>

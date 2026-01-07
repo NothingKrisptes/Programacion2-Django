@@ -1,5 +1,4 @@
 {% extends "index.html" %}
-
 {% block contenido %}
 <div class="container py-4">
   <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
@@ -9,75 +8,72 @@
     </div>
 
     <div class="d-flex gap-2">
-      <a class="btn btn-outline-primary" href="{% url 'buscar_libro_openlibrary' %}">
-        Buscar en OpenLibrary
-      </a>
-      <a class="btn btn-primary" href="{% url 'crear_libro' %}">
-        Crear libro (manual)
-      </a>
-       <a class="btn btn-outline-warning" href="{% url 'libros_inactivos' %}">
-        Libros inactivos
-      </a>
+      {% if user.is_authenticated and perms.gestion.add_libro %}
+        <a class="btn btn-outline-primary" href="{% url 'buscar_libro_openlibrary' %}">Buscar en OpenLibrary</a>
+        <a class="btn btn-primary" href="{% url 'crear_libro' %}">Crear libro manual</a>
+      {% endif %}
+
+      {% if user.is_authenticated and perms.gestion.change_libro %}
+        <a class="btn btn-outline-warning" href="{% url 'libros_inactivos' %}">Libros inactivos</a>
+      {% endif %}
     </div>
   </div>
 
   <div class="row g-3">
     {% for libro in libros %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-      <div class="card h-100 shadow-sm">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="card h-100 shadow-sm">
+          {% if libro.coverId %}
+            <img src="https://covers.openlibrary.org/b/id/{{ libro.coverId }}-L.jpg"
+                 class="card-img-top" alt="Portada" style="height: 320px; object-fit: cover;">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center bg-light" style="height: 320px;">
+              <span class="text-muted">Sin portada</span>
+            </div>
+          {% endif %}
 
-        {% if libro.coverId %}
-          <img
-            src="https://covers.openlibrary.org/b/id/{{ libro.coverId }}-L.jpg"
-            class="card-img-top"
-            alt="Portada"
-            style="height: 320px; object-fit: cover;"
-          >
-        {% else %}
-          <div class="d-flex align-items-center justify-content-center bg-light"
-               style="height: 320px;">
-            <span class="text-muted">Sin portada</span>
-          </div>
-        {% endif %}
+          <div class="card-body">
+            <h5 class="card-title mb-1">{{ libro.titulo }}</h5>
+            <div class="text-muted mb-2">{{ libro.autor }}</div>
 
-        <div class="card-body">
-          <h5 class="card-title mb-1">{{ libro.titulo }}</h5>
-          <div class="text-muted mb-2">{{ libro.autor }}</div>
+            <div class="small">
+              <div><b>Stock</b> {{ libro.stock }}</div>
+              <div><b>Editorial</b> {{ libro.editorial|default:"No disponible" }}</div>
+              <div><b>Páginas</b> {{ libro.paginas|default:"—" }}</div>
+              <div><b>Género</b> {{ libro.genero|default:"Desconocido" }}</div>
+              <div><b>ISBN</b> {{ libro.isbn|default:"—" }}</div>
+            </div>
 
-          <div class="small">
-            <div><b>Stock:</b> {{ libro.stock }}</div>
-            <div><b>Editorial:</b> {{ libro.editorial|default:"No disponible" }}</div>
-            <div><b>Páginas:</b> {{ libro.paginas|default:"—" }}</div>
-            <div><b>Género:</b> {{ libro.genero|default:"Desconocido" }}</div>
-            <div><b>ISBN:</b> {{ libro.isbn|default:"—" }}</div>
-            <div class="mt-2">{{ libro.descripcion|default:"No hay descripción disponible." }}</div>
-          </div>
-        </div>
-
-        <div class="card-footer bg-white d-flex justify-content-between align-items-center gap-2">
-          <div>
-            {% if libro.stock|default:0|add:0 > 0 %}
-              <span class="badge bg-success">Disponible</span>
-            {% else %}
-              <span class="badge bg-secondary">Sin stock</span>
-            {% endif %}
+            <div class="mt-2 text-muted">{{ libro.descripcion|default:"No hay descripción disponible."|truncatechars:120 }}</div>
           </div>
 
-          <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_libro' libro.pk %}">
-              Editar
-            </a>
-            <form action="{% url 'eliminar_libro' libro.pk %}" method="POST" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro?')">
+          <div class="card-footer bg-white d-flex justify-content-between align-items-center gap-2">
+            <div>
+              {% if libro.stock|default:0|add:0 > 0 %}
+                <span class="badge bg-success">Disponible</span>
+              {% else %}
+                <span class="badge bg-secondary">Sin stock</span>
+              {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+              {% if user.is_authenticated and perms.gestion.change_libro %}
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'editar_libro' libro.pk %}">Editar</a>
+              {% endif %}
+
+              {% if user.is_authenticated and perms.gestion.delete_libro %}
+                <form action="{% url 'eliminar_libro' libro.pk %}" method="POST" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          onclick="return confirm('¿Estás seguro?')">
                     Eliminar
-                </button>
-            </form>
+                  </button>
+                </form>
+              {% endif %}
+            </div>
           </div>
         </div>
-
       </div>
-    </div>
     {% empty %}
       <div class="col-12">
         <div class="alert alert-info">No hay libros registrados.</div>
@@ -86,29 +82,25 @@
   </div>
 
   {% if is_paginated %}
-  <nav class="mt-4">
-    <ul class="pagination">
-      {% if page_obj.has_previous %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
-        </li>
-      {% else %}
-        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-      {% endif %}
+    <nav class="mt-4">
+      <ul class="pagination">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+        {% endif %}
 
-      <li class="page-item disabled">
-        <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-      </li>
-
-      {% if page_obj.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+        <li class="page-item disabled">
+          <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
         </li>
-      {% else %}
-        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-      {% endif %}
-    </ul>
-  </nav>
+
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+        {% endif %}
+      </ul>
+    </nav>
   {% endif %}
 </div>
 {% endblock %}

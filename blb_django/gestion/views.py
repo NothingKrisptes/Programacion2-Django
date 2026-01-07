@@ -1,14 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 from django.conf import settings
-from .models import Autor,Libro,Prestamo,Multa
+from .models import Autor,Libro,Prestamo,Multa,LogEvento
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
@@ -22,6 +22,9 @@ from django.views.decorators.http import require_POST
 from .services.multas_service import ensure_multa_retraso
 from django.contrib.auth.decorators import user_passes_test
 from .forms import ClienteRegistroForm, AdminCrearUsuarioForm
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
 
 # Create your views here.
 
@@ -63,6 +66,7 @@ def crear_libro(request):
 
 #Creacion de libros con OpenLibrary  
 @login_required
+@permission_required("gestion.add_libro", raise_exception=True)
 def buscarLibroOpenLibrary(request):
     contexto = {"data": None, "errorMsg": None, "query": "", "stock": 1}
 
@@ -88,6 +92,7 @@ def buscarLibroOpenLibrary(request):
     return render(request, "gestion/templates/buscar_libro_openlibrary.html", contexto)
 
 @login_required
+@permission_required("gestion.add_libro", raise_exception=True)
 def guardarLibroOpenLibrary(request):
     if request.method != "POST":
         return redirect("buscar_libro_openlibrary")
@@ -188,6 +193,7 @@ def guardarLibroOpenLibrary(request):
     return redirect("lista_libros")
 
 @login_required
+@permission_required("gestion.change_libro", raise_exception=True)
 @require_POST
 def reactivar_libro(request, pk):
     libro = get_object_or_404(Libro, pk=pk)
@@ -199,11 +205,13 @@ def reactivar_libro(request, pk):
     return redirect("lista_libros")
 
 @login_required
+@permission_required("gestion.view_autor", raise_exception=True)
 def lista_autores(request):
     autores = Autor.objects.filter(activo=True).order_by("apellido", "nombre")
     return render(request, "gestion/templates/autores.html", {"autores": autores})
 
 @login_required
+@permission_required("gestion.add_autor", raise_exception=True)
 def crear_autor(request, id=None):
     if id == None:
         autor = None
@@ -229,6 +237,7 @@ def crear_autor(request, id=None):
     return render(request, 'gestion/templates/crear_autores.html', context)
 
 @login_required
+@permission_required("gestion.delete_autor", raise_exception=True)
 @require_POST
 def inactivar_autor(request, id):
     autor = get_object_or_404(Autor, id=id)
@@ -238,6 +247,7 @@ def inactivar_autor(request, id):
     return redirect("lista_autores")
 
 @login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
 def lista_prestamos(request):
     prestamos = Prestamo.objects.all().order_by("-id")
 
@@ -301,6 +311,7 @@ def crear_prestamos(request):
             fecha_prestamos=fecha_prestamos,
             fecha_max=fecha_max,
         )
+        log_event(request, "CREAR_PRESTAMO", f"Prestamo #{prestamo.id} | Libro={prestamo.libro_id} | Usuario={prestamo.usuario_id}")
 
         # restar stock
         Libro.objects.filter(id=libro.id).update(stock=F('stock') - 1)
@@ -317,6 +328,7 @@ def crear_prestamos(request):
     })
 
 @login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
 def detalle_prestamo(request, id):
     prestamo = get_object_or_404(Prestamo, id=id)
 
@@ -328,6 +340,7 @@ def detalle_prestamo(request, id):
     return render(request, 'gestion/templates/detalle_prestamo.html', {'prestamo': prestamo, 'multas': multas})
 
 @login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
 @require_http_methods(["POST"])
 def devolver_prestamo(request, id):
     prestamo = get_object_or_404(Prestamo, id=id)
@@ -337,6 +350,7 @@ def devolver_prestamo(request, id):
 
     prestamo.fecha_devolucion = timezone.now().date()
     prestamo.save()
+    log_event(request, "DEVOLVER_PRESTAMO", f"Prestamo #{prestamo.id} devuelto | Libro={prestamo.libro_id}")
 
     # sumar stock
     Libro.objects.filter(id=prestamo.libro.id).update(stock=F('stock') + 1)
@@ -346,11 +360,13 @@ def devolver_prestamo(request, id):
     return redirect("detalle_prestamo", id=prestamo.id)
 
 @login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
 def lista_multas(request):
     multas = Multa.objects.all().order_by('-id')
     return render(request, 'gestion/templates/multas.html', {'multas': multas})
 
 @login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
 @require_http_methods(["GET", "POST"])
 def crear_multa(request):
     prestamos = Prestamo.objects.all().order_by('-id')
@@ -401,6 +417,7 @@ def crear_multa(request):
             monto=monto,
             pagada=False,
         )
+        log_event(request, "CREAR_MULTA", f"Multa #{multa.id} | Prestamo={prestamo.id} | Tipo={tipo} | Monto={monto}")
 
         return redirect("multa_pago_wizard", multaId=multa.id)
 
@@ -421,6 +438,7 @@ def multaPagoWizard(request, multaId):
             multa.pagada = True
             multa.fechaPago = timezone.now()
             multa.save()
+            log_event(request, "PAGAR_MULTA", f"Multa #{multa.id} pagada | Prestamo={multa.prestamo_id} | Monto={multa.monto}")
         return redirect("lista_multa")
 
     return render(request, "gestion/templates/multa_pago_wizard.html", {"multa": multa})
@@ -450,17 +468,200 @@ def error(request):
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
 
+# Helper de logging para los eventos
+def log_event(request, accion, detalle=""):
+    if request.user.is_authenticated:
+        LogEvento.objects.create(
+            usuario=request.user,
+            accion=accion,
+            detalle=detalle
+        )
+
 @user_passes_test(es_admin)
 def nuevo_usuario(request):
     if request.method == "POST":
         form = AdminCrearUsuarioForm(request.POST)
         if form.is_valid():
-            form.save()
+            created_user = form.save()  # <- AQUÍ se crea y se obtiene el usuario
+
+            rol = form.cleaned_data.get("rol", "")
+            log_event(
+                request,
+                "CREAR_USUARIO",
+                f"Usuario creado: {created_user.username} | Rol={rol}"
+            )
+
             messages.success(request, "Usuario creado correctamente.")
             return redirect("index")
     else:
         form = AdminCrearUsuarioForm()
+
     return render(request, "gestion/templates/nuevo_usuario.html", {"form": form})
+
+@user_passes_test(es_admin)
+def reporte_libros_prestados_pdf(request):
+    # Prestamos activos (no devueltos)
+    prestamos = (Prestamo.objects
+                 .filter(fecha_devolucion__isnull=True)
+                 .select_related("libro", "usuario")
+                 .order_by("fecha_max"))
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="reporte_libros_prestados.pdf"'
+
+    p = canvas.Canvas(response, pagesize=letter)
+    width, height = letter
+
+    y = height - 1 * inch
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1 * inch, y, "Reporte: Libros prestados (activos)")
+    y -= 0.3 * inch
+
+    p.setFont("Helvetica", 10)
+    p.drawString(1 * inch, y, f"Generado: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    y -= 0.4 * inch
+
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(1 * inch, y, "ID")
+    p.drawString(1.5 * inch, y, "Usuario")
+    p.drawString(3.2 * inch, y, "Libro")
+    p.drawString(5.8 * inch, y, "Máxima")
+    y -= 0.2 * inch
+    p.line(1 * inch, y, 7.5 * inch, y)
+    y -= 0.25 * inch
+
+    p.setFont("Helvetica", 10)
+    for pr in prestamos:
+        if y < 1 * inch:
+            p.showPage()
+            y = height - 1 * inch
+            p.setFont("Helvetica", 10)
+
+        p.drawString(1 * inch, y, str(pr.id))
+        p.drawString(1.5 * inch, y, pr.usuario.username)
+        p.drawString(3.2 * inch, y, str(pr.libro)[:35])
+        p.drawString(5.8 * inch, y, str(pr.fecha_max))
+        y -= 0.22 * inch
+
+    p.showPage()
+    p.save()
+    return response
+
+@user_passes_test(es_admin)
+def reporte_usuarios_multados_pdf(request):
+    # Usuarios con multas pendientes
+    multas = (Multa.objects
+              .filter(pagada=False)
+              .select_related("prestamo__usuario", "prestamo__libro")
+              .order_by("prestamo__usuario__username", "-fecha"))
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="reporte_usuarios_multados.pdf"'
+
+    p = canvas.Canvas(response, pagesize=letter)
+    width, height = letter
+
+    y = height - 1 * inch
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1 * inch, y, "Reporte: Usuarios con multas pendientes")
+    y -= 0.3 * inch
+
+    p.setFont("Helvetica", 10)
+    p.drawString(1 * inch, y, f"Generado: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    y -= 0.4 * inch
+
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(1 * inch, y, "Usuario")
+    p.drawString(2.8 * inch, y, "Préstamo")
+    p.drawString(4.6 * inch, y, "Tipo")
+    p.drawString(5.5 * inch, y, "Monto")
+    y -= 0.2 * inch
+    p.line(1 * inch, y, 7.5 * inch, y)
+    y -= 0.25 * inch
+
+    p.setFont("Helvetica", 10)
+    for m in multas:
+        if y < 1 * inch:
+            p.showPage()
+            y = height - 1 * inch
+            p.setFont("Helvetica", 10)
+
+        usuario = m.prestamo.usuario.username
+        prestamo = f"#{m.prestamo.id} {str(m.prestamo.libro)[:20]}"
+        p.drawString(1 * inch, y, usuario)
+        p.drawString(2.8 * inch, y, prestamo)
+        p.drawString(4.6 * inch, y, m.get_tipo_display())
+        p.drawRightString(6.6 * inch, y, str(m.monto))
+        y -= 0.22 * inch
+
+    p.showPage()
+    p.save()
+    return response
+
+@user_passes_test(es_admin)
+def reporte_multas_total_pdf(request):
+    multas = (Multa.objects
+              .select_related("prestamo__usuario", "prestamo__libro")
+              .order_by("-fecha", "-id"))
+
+    total = sum([m.monto for m in multas])
+    total_pendiente = sum([m.monto for m in multas if not m.pagada])
+    total_pagado = sum([m.monto for m in multas if m.pagada])
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="reporte_multas_total.pdf"'
+
+    p = canvas.Canvas(response, pagesize=letter)
+    width, height = letter
+
+    y = height - 1 * inch
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1 * inch, y, "Reporte: Multas (total)")
+    y -= 0.3 * inch
+
+    p.setFont("Helvetica", 10)
+    p.drawString(1 * inch, y, f"Generado: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    y -= 0.3 * inch
+    p.drawString(1 * inch, y, f"Total: {total}")
+    y -= 0.2 * inch
+    p.drawString(1 * inch, y, f"Total pagado: {total_pagado}")
+    y -= 0.2 * inch
+    p.drawString(1 * inch, y, f"Total pendiente: {total_pendiente}")
+    y -= 0.35 * inch
+
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(1 * inch, y, "ID")
+    p.drawString(1.5 * inch, y, "Usuario")
+    p.drawString(3.1 * inch, y, "Libro")
+    p.drawString(5.3 * inch, y, "Estado")
+    p.drawString(6.2 * inch, y, "Monto")
+    y -= 0.2 * inch
+    p.line(1 * inch, y, 7.5 * inch, y)
+    y -= 0.25 * inch
+
+    p.setFont("Helvetica", 10)
+    for m in multas:
+        if y < 1 * inch:
+            p.showPage()
+            y = height - 1 * inch
+            p.setFont("Helvetica", 10)
+
+        estado = "Pagada" if m.pagada else "Pendiente"
+        p.drawString(1 * inch, y, str(m.id))
+        p.drawString(1.5 * inch, y, m.prestamo.usuario.username)
+        p.drawString(3.1 * inch, y, str(m.prestamo.libro)[:25])
+        p.drawString(5.3 * inch, y, estado)
+        p.drawRightString(7.2 * inch, y, str(m.monto))
+        y -= 0.22 * inch
+
+    p.showPage()
+    p.save()
+    return response
+
+@user_passes_test(es_admin)
+def ver_logs(request):
+    logs = LogEvento.objects.select_related("usuario").order_by("-fecha")[:500]
+    return render(request, "gestion/templates/logs.html", {"logs": logs})
 
 # TIPO DE VISTAS VERSION DJGANGO
 # Se necesitan las siguientes librerias
@@ -468,7 +669,7 @@ def nuevo_usuario(request):
 # from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 # from django.urls import reverse_lazy
 
-class LibroListView(LoginRequiredMixin, ListView):
+class LibroListView(ListView):
     model = Libro
     template_name = 'gestion/templates/libros_view.html'
     context_object_name = 'libros'
@@ -476,8 +677,8 @@ class LibroListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         return Libro.objects.filter(activo=True).order_by('-id')
-    
-class LibroDetalleView(LoginRequiredMixin, DetailView):
+     
+class LibroDetalleView(DetailView):
     model = Libro
     template_name = 'gestion/templates/detalle_libros.html'
     context_object_name = 'libro'

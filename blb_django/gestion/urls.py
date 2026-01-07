@@ -12,6 +12,10 @@ urlpatterns = [
     
     # Admin
     path("usuarios/nuevo/", nuevo_usuario, name="nuevo_usuario"),
+    path("reportes/libros-prestados.pdf", reporte_libros_prestados_pdf, name="reporte_libros_prestados_pdf"),
+    path("reportes/usuarios-multados.pdf", reporte_usuarios_multados_pdf, name="reporte_usuarios_multados_pdf"),
+    path("reportes/multas-total.pdf", reporte_multas_total_pdf, name="reporte_multas_total_pdf"),
+    path("logs/", ver_logs, name="ver_logs"),
 
     #Gestion Usuarios
     path('login/', auth_views.LoginView.as_view(), name='login'),

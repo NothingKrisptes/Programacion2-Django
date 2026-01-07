@@ -1,0 +1,43 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="m-0">Logs del sistema</h2>
+      <div class="text-muted">Solo visible para administradores (últimos 500 eventos).</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'index' %}">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in logs %}
+          <tr>
+            <td>{{ l.fecha }}</td>
+            <td>{{ l.usuario.username }}</td>
+            <td>{{ l.accion }}</td>
+            <td class="text-muted">{{ l.detalle|default:"" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="p-3">No hay logs.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
