@@ -25,6 +25,8 @@ from .forms import ClienteRegistroForm, AdminCrearUsuarioForm
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
+from .services.multas_service import ensure_multa_retraso
+from django.contrib.auth.decorators import login_required, user_passes_test
 
 # Create your views here.
 
@@ -284,7 +286,8 @@ def crear_prestamos(request):
         return HttpResponseForbidden()
 
     libros = Libro.objects.filter(activo= True, stock__gt=0).order_by('titulo')
-    usuarios = User.objects.all()
+    grupo_cliente = Group.objects.get(name="CLIENTE")
+    usuarios = User.objects.filter(groups=grupo_cliente).order_by("username")
 
     if request.method == 'POST':
         libro_id = request.POST.get('libro')
@@ -369,29 +372,34 @@ def lista_multas(request):
 @permission_required("gestion.gestionar_prestamos", raise_exception=True)
 @require_http_methods(["GET", "POST"])
 def crear_multa(request):
-    prestamos = Prestamo.objects.all().order_by('-id')
+    grupo_cliente = Group.objects.get(name="CLIENTE")
+    prestamos = Prestamo.objects.filter(usuario__groups=grupo_cliente).order_by("-id")
 
     if request.method == "POST":
         prestamo_id = request.POST.get("prestamo")
-        tipo = (request.POST.get("tipo") or "").strip()  # r, p, d
+        tipo = (request.POST.get("tipo") or "").strip()  # d, p
         extra_raw = (request.POST.get("extra") or "").strip()
 
-        if not prestamo_id or tipo not in ("r", "p", "d"):
+        if not prestamo_id or tipo not in ("p", "d"):
             messages.error(request, "Faltan datos o el tipo de multa es inválido.")
             return redirect("crear_multa")
 
         prestamo = get_object_or_404(Prestamo, id=prestamo_id)
 
-        # BASE RETRASO: solo si hay retraso
-        if prestamo.dias_retraso > 0:
-            base = Decimal(str(prestamo.multa_retraso)).quantize(Decimal("0.01"))
-        else:
-            base = Decimal("0.00")
+        # Bloqueo: si ya existe una multa extra (d/p) pendiente en este préstamo, no permitir otra
+        if Multa.objects.filter(prestamo=prestamo, pagada=False).exclude(tipo="r").exists():
+            messages.error(request, "Este préstamo ya tiene una multa por deterioro/pérdida pendiente. Elimínala si necesitas corregir.")
+            return redirect("crear_multa")
 
-        extra = Decimal("0.00")
+        # 1) Asegurar multa automática por retraso si aplica (y obtenerla)
+        multa_retraso = None
+        try:
+            multa_retraso = ensure_multa_retraso(prestamo)  # debe retornar Multa tipo 'r' o None
+        except TypeError:
+            multa_retraso = None
 
+        # 2) Calcular extra (solo deterioro/pérdida)
         if tipo == "d":
-            # deterioro: 5 o 10 (default 5)
             try:
                 extra = Decimal(extra_raw) if extra_raw else Decimal("5.00")
             except InvalidOperation:
@@ -400,17 +408,38 @@ def crear_multa(request):
             if extra not in (Decimal("5.00"), Decimal("10.00")):
                 extra = Decimal("5.00")
 
-        elif tipo == "p":
-            # pérdida: fijo 20
+        else:  # tipo == "p"
             extra = Decimal("20.00")
 
-        # retraso puro (r): extra queda 0
-        monto = (base + extra).quantize(Decimal("0.01"))
+        # 3) Si existe multa automática (r) pendiente -> SUMAR ahí y NO crear otra
+        if multa_retraso is not None and not multa_retraso.pagada:
+            # Seguridad: solo acumular si es tipo r
+            if multa_retraso.tipo != "r":
+                messages.error(request, "Error: la multa automática no es de retraso.")
+                return redirect("crear_multa")
 
+            nuevo_monto = (Decimal(str(multa_retraso.monto)) + extra).quantize(Decimal("0.01"))
+            if nuevo_monto > Decimal("100.00"):
+                messages.error(request, "La multa supera el máximo permitido (100.00).")
+                return redirect("crear_multa")
+
+            multa_retraso.monto = nuevo_monto
+            multa_retraso.save()
+
+            log_event(
+                request,
+                "ACUMULAR_MULTA",
+                f"Multa retraso #{multa_retraso.id} +{extra} ({tipo}) | Prestamo={prestamo.id}",
+            )
+            messages.success(request, "Extra aplicado a la multa automática del préstamo.")
+            return redirect("multa_pago_wizard", multaId=multa_retraso.id)
+
+        # 4) Si NO hay multa automática pendiente (no hay retraso): crear multa nueva (d o p)
+        monto = extra.quantize(Decimal("0.01"))
         if monto > Decimal("100.00"):
             messages.error(request, "La multa supera el máximo permitido (100.00).")
             return redirect("crear_multa")
-        
+
         multa = Multa.objects.create(
             prestamo=prestamo,
             tipo=tipo,
@@ -418,7 +447,6 @@ def crear_multa(request):
             pagada=False,
         )
         log_event(request, "CREAR_MULTA", f"Multa #{multa.id} | Prestamo={prestamo.id} | Tipo={tipo} | Monto={monto}")
-
         return redirect("multa_pago_wizard", multaId=multa.id)
 
     return render(request, "gestion/templates/crear_multas.html", {"prestamos": prestamos})
@@ -428,31 +456,110 @@ def crear_multa(request):
 def multaPagoWizard(request, multaId):
     multa = get_object_or_404(Multa, id=multaId)
 
-    # (Opcional) Solo bibliotecario/admin debería poder marcar pagada:
     if not request.user.has_perm("gestion.gestionar_prestamos"):
         return HttpResponseForbidden("No tienes permisos para gestionar pagos de multas.")
 
     if request.method == "POST":
         action = request.POST.get("action")
+
+        # 1) Agregar extra (d/p) a la multa de retraso ya generada
+        if action == "addExtra" and not multa.pagada:
+
+            if getattr(multa, "cerrada", False):
+                messages.error(request, "Esta multa ya fue confirmada/cerrada. Si hubo un error, elimínala y créala nuevamente.")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            # Solo acumular extras en 'r'
+            if multa.tipo != "r":
+                messages.error(request, "Solo se puede agregar extra desde la multa de retraso.")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            # Bloqueo: solo 1 extra (d/p) pendiente por préstamo (si lo manejas como multa separada, esto aplica)
+            # Si NO estás creando multa separada, igual deja esta regla para impedir duplicados lógicos.
+            if Multa.objects.filter(prestamo=multa.prestamo, pagada=False).exclude(tipo="r").exists():
+                messages.error(request, "Ya existe una multa por deterioro/pérdida para este préstamo. Elimina la multa si necesitas corregir.")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            extra_tipo = (request.POST.get("extra_tipo") or "").strip()  # d o p
+            extra_val = (request.POST.get("extra_val") or "").strip()    # 5.00 / 10.00 o vacío
+
+            if extra_tipo == "p":
+                extra = Decimal("20.00")
+            elif extra_tipo == "d":
+                try:
+                    extra = Decimal(extra_val) if extra_val else Decimal("5.00")
+                except InvalidOperation:
+                    extra = Decimal("5.00")
+
+                if extra not in (Decimal("5.00"), Decimal("10.00")):
+                    extra = Decimal("5.00")
+            else:
+                messages.error(request, "Tipo de extra inválido.")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            nuevo_monto = (Decimal(str(multa.monto)) + extra).quantize(Decimal("0.01"))
+            if nuevo_monto > Decimal("100.00"):
+                messages.error(request, "La multa supera el máximo permitido (100.00).")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            multa.monto = nuevo_monto
+            multa.cerrada = True  # <- clave: ya no permitir más sumas
+            multa.save()
+
+            log_event(request, "ACUMULAR_MULTA", f"Multa #{multa.id} +{extra} ({extra_tipo})")
+            messages.success(request, "Extra agregado correctamente. La multa quedó cerrada.")
+            return redirect("multa_pago_wizard", multaId=multa.id)
+
+        # 2) Confirmar que fue SOLO retraso (cierra sin extra)
+        if action == "confirmClose" and not multa.pagada:
+            if getattr(multa, "cerrada", False):
+                messages.error(request, "Esta multa ya está cerrada.")
+                return redirect("multa_pago_wizard", multaId=multa.id)
+
+            # Solo tiene sentido cerrar r (si quieres, puedes permitir cerrar d/p también)
+            multa.cerrada = True
+            multa.save()
+            log_event(request, "CERRAR_MULTA", f"Multa #{multa.id} cerrada sin extra | Prestamo={multa.prestamo_id}")
+            messages.success(request, "Multa confirmada y cerrada.")
+            return redirect("multa_pago_wizard", multaId=multa.id)
+
+        # 3) Marcar pagada (no reversible)
         if action == "markPaid" and not multa.pagada:
             multa.pagada = True
             multa.fechaPago = timezone.now()
             multa.save()
             log_event(request, "PAGAR_MULTA", f"Multa #{multa.id} pagada | Prestamo={multa.prestamo_id} | Monto={multa.monto}")
-        return redirect("lista_multa")
+            return redirect("lista_multa")
+
+        return redirect("multa_pago_wizard", multaId=multa.id)
 
     return render(request, "gestion/templates/multa_pago_wizard.html", {"multa": multa})
+
+# Eliminar multas (solo si no están pagadas)
+@login_required
+@permission_required("gestion.gestionar_prestamos", raise_exception=True)
+@require_http_methods(["POST"])
+def eliminar_multa(request, multaId):
+    multa = get_object_or_404(Multa, id=multaId)
+
+    if multa.pagada:
+        messages.error(request, "No se puede eliminar una multa pagada.")
+        return redirect("multa_pago_wizard", multaId=multa.id)
+
+    prestamo_id = multa.prestamo_id
+    multa.delete()
+    log_event(request, "ELIMINAR_MULTA", f"Multa #{multaId} eliminada | Prestamo={prestamo_id}")
+    messages.success(request, "Multa eliminada. Ahora puedes crearla nuevamente.")
+    return redirect("detalle_prestamo", id=prestamo_id)
 
 def registro(request):
     if request.method == "POST":
         form = ClienteRegistroForm(request.POST)
         if form.is_valid():
             usuario = form.save(commit=True)  # el form ya pone first_name/last_name/email
-
             # Asignación por grupo (rol)
             grupo_cliente = Group.objects.get(name="CLIENTE")
             usuario.groups.add(grupo_cliente)
-
             login(request, usuario)
             messages.success(request, "Cuenta creada correctamente.")
             return redirect("index")
@@ -662,6 +769,29 @@ def reporte_multas_total_pdf(request):
 def ver_logs(request):
     logs = LogEvento.objects.select_related("usuario").order_by("-fecha")[:500]
     return render(request, "gestion/templates/logs.html", {"logs": logs})
+
+# Para que un cliente vea sus propias multas
+def es_cliente(user):
+    return user.is_authenticated and user.groups.filter(name="CLIENTE").exists()
+
+@login_required
+@user_passes_test(es_cliente)
+def mis_multas(request):
+    multas = (Multa.objects
+              .filter(prestamo__usuario=request.user)
+              .select_related("prestamo", "prestamo__libro", "prestamo__usuario")
+              .order_by("-pagada", "-fecha", "-id"))
+    return render(request, "gestion/templates/mis_multas.html", {"multas": multas})
+
+@login_required
+@user_passes_test(es_cliente)
+def mi_multa_detalle(request, multaId):
+    multa = get_object_or_404(
+        Multa.objects.select_related("prestamo", "prestamo__libro", "prestamo__usuario"),
+        id=multaId,
+        prestamo__usuario=request.user
+    )
+    return render(request, "gestion/templates/mi_multa_detalle.html", {"multa": multa})
 
 # TIPO DE VISTAS VERSION DJGANGO
 # Se necesitan las siguientes librerias

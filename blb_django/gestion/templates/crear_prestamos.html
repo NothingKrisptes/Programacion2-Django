@@ -24,7 +24,8 @@
       <label class="form-label">Usuario</label>
       <select name="usuario" class="form-select" required>
         {% for u in usuarios %}
-          <option value="{{ u.id }}">{{ u.username }}</option>
+          <option value="{{ u.id }}"> {{ u.username }}{% if u.first_name or u.last_name %} — {{ u.first_name }} {{ u.last_name }}{% endif %}
+          </option>
         {% endfor %}
       </select>
     </div>

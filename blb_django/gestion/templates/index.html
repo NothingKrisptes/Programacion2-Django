@@ -29,18 +29,29 @@
       <div class="collapse navbar-collapse" id="navbarMenu">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
 
-          <!-- Libros: público (cliente sin login también) -->
+          <!-- Libros: público -->
           <li class="nav-item">
             <a class="nav-link" href="{% url 'lista_libros' %}">Libros</a>
           </li>
 
-          <!-- Préstamos / Multas: solo bibliotecario/admin (permiso custom) -->
+          <!-- Mis multas: solo CLIENTE (solo lectura) -->
+          {% if user.is_authenticated %}
+            {% for g in user.groups.all %}
+              {% if g.name == "CLIENTE" %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'mis_multas' %}">Mis multas</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          <!-- Préstamos / Multas: solo bibliotecario/admin -->
           {% if user.is_authenticated and perms.gestion.gestionar_prestamos %}
             <li class="nav-item"><a class="nav-link" href="{% url 'lista_prestamos' %}">Préstamos</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'lista_multa' %}">Multas</a></li>
           {% endif %}
 
-          <!-- Autores: opcional, solo si tiene view_autor -->
+          <!-- Autores -->
           {% if user.is_authenticated and perms.gestion.view_autor %}
             <li class="nav-item"><a class="nav-link" href="{% url 'lista_autores' %}">Autores</a></li>
           {% endif %}

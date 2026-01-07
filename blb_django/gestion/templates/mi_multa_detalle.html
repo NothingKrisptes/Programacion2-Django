@@ -1,0 +1,29 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4" style="max-width: 720px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="m-0">Multa #{{ multa.id }}</h2>
+    <a class="btn btn-outline-secondary" href="{% url 'mis_multas' %}">Volver</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="mb-2"><b>Libro:</b> {{ multa.prestamo.libro.titulo }}</div>
+      <div class="mb-2"><b>Préstamo:</b> #{{ multa.prestamo.id }}</div>
+      <div class="mb-2"><b>Tipo:</b> {{ multa.get_tipo_display }}</div>
+      <div class="mb-2"><b>Monto:</b> ${{ multa.monto }}</div>
+      <div class="mb-2"><b>Fecha:</b> {{ multa.fecha }}</div>
+      <div class="mb-0"><b>Estado:</b> {% if multa.pagada %}Pagada{% else %}Pendiente{% endif %}</div>
+      {% if multa.fechaPago %}
+        <div class="mt-2 text-muted"><b>Pagó el:</b> {{ multa.fechaPago }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not multa.pagada %}
+    <div class="alert alert-warning mt-3 mb-0">
+      Multa pendiente. Acércate a biblioteca para regularizarla.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

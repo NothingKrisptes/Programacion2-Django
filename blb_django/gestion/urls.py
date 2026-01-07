@@ -17,6 +17,10 @@ urlpatterns = [
     path("reportes/multas-total.pdf", reporte_multas_total_pdf, name="reporte_multas_total_pdf"),
     path("logs/", ver_logs, name="ver_logs"),
 
+    # Cliente
+    path("mis-multas/", mis_multas, name="mis_multas"),
+    path("mis-multas/<int:multaId>/", mi_multa_detalle, name="mi_multa_detalle"),
+
     #Gestion Usuarios
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('loguot/', auth_views.LogoutView.as_view(next_page='login'),name = "logout"), #Este caso toma el valor de la pagina de login/, el name define el nombre que se usa en next_page
@@ -55,5 +59,6 @@ urlpatterns = [
     path('multas/nuevo/', crear_multa, name="crear_multa"),
     path('multas/nuevo/<int:prestamo_id>/', crear_multa, name="crear_multa_prestamo"),
     path('multas/<int:multaId>/pago/', multaPagoWizard, name="multa_pago_wizard"),
+    path("multas/<int:multaId>/eliminar/", eliminar_multa, name="eliminar_multa"),
 
 ]

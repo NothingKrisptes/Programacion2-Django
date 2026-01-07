@@ -1,0 +1,66 @@
+{% extends "index.html" %}
+{% block contenido %}
+<div class="container py-4" style="max-width: 980px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="m-0">Mis multas</h2>
+    <a class="btn btn-outline-secondary" href="{% url 'index' %}">Volver</a>
+  </div>
+
+  {% if multas %}
+    <div class="card shadow-sm">
+      <div class="card-header bg-dark text-white">Listado</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Libro</th>
+                <th>Tipo</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th style="width: 1%"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in multas %}
+                <tr>
+                  <td>{{ m.id }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ m.prestamo.libro.titulo }}</div>
+                    <div class="text-muted small">Préstamo #{{ m.prestamo.id }}</div>
+                  </td>
+                  <td>{{ m.get_tipo_display }}</td>
+                  <td>${{ m.monto }}</td>
+                  <td>
+                    {% if m.pagada %}
+                      <span class="badge bg-success">Pagada</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {{ m.fecha }}
+                    {% if m.fechaPago %}
+                      <div class="text-muted small">Pago: {{ m.fechaPago }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'mi_multa_detalle' m.id %}">Ver</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info mb-0">
+      No tienes multas registradas.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

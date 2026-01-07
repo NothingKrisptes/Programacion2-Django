@@ -4,8 +4,8 @@
   <div class="mb-3">
     <h2 class="m-0">Crear multa</h2>
     <div class="text-muted">
-      Deterioro: 5 o 10. Pérdida: 20. Retraso se suma solo si hubo retraso.
-      (Los préstamos con libro inactivo se muestran como historial pero no se pueden seleccionar.)
+      Deterioro: 5 o 10. Pérdida: 20. El retraso se calcula automáticamente y, si existe una multa por retraso pendiente,
+      este formulario sumará el extra a esa misma multa. (Los préstamos con libro inactivo se muestran como historial pero no se pueden seleccionar.)
     </div>
   </div>
 
@@ -18,43 +18,57 @@
         {% for p in prestamos %}
           <option value="{{ p.id }}" {% if p.libro.activo is False %}disabled{% endif %}>
             {% if p.libro.activo is False %}[INACTIVO] {% endif %}
-            #{{ p.id }} | {{ p.usuario.username }} | {{ p.libro }}
-            | máx: {{ p.fecha_max }}
-            | retraso: {{ p.dias_retraso }} días
-            | multa retraso: ${{ p.multa_retraso }}
+            #{{ p.id }} | {{ p.usuario.username }} | {{ p.libro.titulo }} | máx: {{ p.fecha_max }} | retraso: {{ p.dias_retraso }}d | ${{ p.multa_retraso }}
           </option>
         {% empty %}
           <option disabled>No hay préstamos disponibles</option>
         {% endfor %}
       </select>
-      <div class="form-text">
-        Si un préstamo aparece como INACTIVO, significa que el libro fue dado de baja (soft delete).
-      </div>
     </div>
 
     <div class="mb-3">
       <label class="form-label">Tipo</label>
-      <select name="tipo" class="form-select" required>
-        <option value="r">Retraso (solo si aplica)</option>
-        <option value="d">Deterioro (retraso si aplica + extra)</option>
-        <option value="p">Pérdida (retraso si aplica + 20)</option>
+      <select id="tipo" name="tipo" class="form-select" required>
+        <option value="d">Deterioro</option>
+        <option value="p">Pérdida</option>
       </select>
     </div>
 
     <div class="mb-3">
       <label class="form-label">Extra (solo deterioro)</label>
-      <select name="extra" class="form-select">
-        <option value="">(Sin extra)</option>
+      <select id="extra" name="extra" class="form-select">
+        <option value="">Seleccione…</option>
         <option value="5.00">Deterioro leve: 5.00</option>
         <option value="10.00">Deterioro grave: 10.00</option>
       </select>
-      <div class="form-text">Para pérdida el sistema usa 20 automáticamente.</div>
+      <div class="form-text">Para pérdida se usa 20 automáticamente.</div>
     </div>
 
     <div class="d-flex gap-2">
-      <button class="btn btn-primary" type="submit">Crear multa</button>
+      <button class="btn btn-primary" type="submit">Aplicar multa</button>
       <a class="btn btn-outline-secondary" href="{% url 'lista_multa' %}">Cancelar</a>
     </div>
   </form>
 </div>
+
+<script>
+  (function () {
+    const tipo = document.getElementById("tipo");
+    const extra = document.getElementById("extra");
+
+    function sync() {
+      const isPerdida = (tipo.value === "p");
+      if (isPerdida) {
+        extra.value = "";
+        extra.disabled = true;
+      } else {
+        extra.disabled = false;
+        if (!extra.value) extra.value = "5.00";
+      }
+    }
+
+    tipo.addEventListener("change", sync);
+    sync();
+  })();
+</script>
 {% endblock %}

@@ -72,6 +72,7 @@ class Multa(models.Model):
     pagada = models.BooleanField(default=False)
     fecha = models.DateField(default=timezone.now)
     fechaPago = models.DateTimeField(blank=True, null=True)
+    cerrada = models.BooleanField(default=False)
 
     class Meta:
         constraints = [

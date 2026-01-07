@@ -13,7 +13,13 @@
       <div class="mb-2"><b>Tipo:</b> {{ multa.get_tipo_display }}</div>
       <div class="mb-2"><b>Monto:</b> ${{ multa.monto }}</div>
       <div class="mb-2"><b>Fecha:</b> {{ multa.fecha }}</div>
-      <div class="mb-0"><b>Estado:</b> {% if multa.pagada %}Pagada{% else %}Pendiente{% endif %}</div>
+      <div class="mb-0">
+        <b>Estado:</b>
+        {% if multa.pagada %}Pagada{% else %}Pendiente{% endif %}
+        {% if not multa.pagada and multa.cerrada %}
+          <span class="badge bg-secondary ms-2">Cerrada</span>
+        {% endif %}
+      </div>
       {% if multa.fechaPago %}
         <div class="mt-2 text-muted"><b>Pagó el:</b> {{ multa.fechaPago }}</div>
       {% endif %}
@@ -21,16 +27,102 @@
   </div>
 
   {% if not multa.pagada %}
-  <form method="post" onsubmit="return confirm('¿Confirmas que esta multa fue pagada?')">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="markPaid">
-    <button class="btn btn-success" type="submit">Marcar como pagada</button>
-  </form>
+
+    {# Acciones SOLO mientras no esté cerrada #}
+    {% if not multa.cerrada %}
+
+      {# Extras solo si es retraso (r) y aún no está cerrada #}
+      {% if multa.tipo == "r" %}
+        <div class="card shadow-sm mb-3">
+          <div class="card-body">
+            <h5 class="mb-2">Agregar extra</h5>
+
+            <form method="post" class="row g-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="addExtra">
+
+              <div class="col-md-5">
+                <label class="form-label">Tipo de extra</label>
+                <select id="extra_tipo" name="extra_tipo" class="form-select" required>
+                  <option value="d">Deterioro</option>
+                  <option value="p">Pérdida</option>
+                </select>
+              </div>
+
+              <div class="col-md-5">
+                <label class="form-label">Valor (solo deterioro)</label>
+                <select id="extra_val" name="extra_val" class="form-select">
+                  <option value="">Seleccione…</option>
+                  <option value="5.00">Deterioro leve: 5.00</option>
+                  <option value="10.00">Deterioro grave: 10.00</option>
+                </select>
+                <div class="form-text">Para pérdida se usa 20 automáticamente.</div>
+              </div>
+
+              <div class="col-md-2 d-grid align-items-end">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <button class="btn btn-outline-primary" type="submit">Sumar</button>
+              </div>
+            </form>
+
+            <hr class="my-3">
+
+            {# Confirmar que fue SOLO retraso (cierra sin extra) #}
+            <form method="post" onsubmit="return confirm('¿Confirmas que esta multa fue SOLO por retraso y deseas cerrarla?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="confirmClose">
+              <button class="btn btn-outline-secondary" type="submit">Confirmar solo retraso</button>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+
+    {% else %}
+      <div class="alert alert-secondary mt-3">
+        Esta multa ya está cerrada. Si hubo un error, elimínala (si está pendiente) y vuelve a crearla.
+      </div>
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2">
+      <form method="post" onsubmit="return confirm('¿Confirmas que esta multa fue pagada?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="markPaid">
+        <button class="btn btn-success" type="submit">Marcar como pagada</button>
+      </form>
+
+      <form method="post" action="{% url 'eliminar_multa' multa.id %}"
+            onsubmit="return confirm('¿Eliminar esta multa? Esta acción no se puede deshacer.')">
+        {% csrf_token %}
+        <button class="btn btn-outline-danger" type="submit">Eliminar multa</button>
+      </form>
+    </div>
+
   {% else %}
     <div class="alert alert-info mt-3 mb-0">
       Esta multa ya fue pagada y no se puede revertir.
     </div>
   {% endif %}
-  
 </div>
+
+<script>
+  (function () {
+    const extraTipo = document.getElementById("extra_tipo");
+    const extraVal = document.getElementById("extra_val");
+    if (!extraTipo || !extraVal) return;
+
+    function syncExtra() {
+      const isPerdida = (extraTipo.value === "p");
+      if (isPerdida) {
+        extraVal.value = "";
+        extraVal.disabled = true;
+      } else {
+        extraVal.disabled = false;
+        if (!extraVal.value) extraVal.value = "5.00";
+      }
+    }
+
+    extraTipo.addEventListener("change", syncExtra);
+    syncExtra();
+  })();
+</script>
 {% endblock %}
